@@ -3362,15 +3362,24 @@ export default function App() {
       )}
 
       {/* CHECKOUT SCREEN VIEW */}
-      {view === 'checkout' && cart.length > 0 && (
+      {view === 'checkout' && (cart.length > 0 || checkoutStep === 4) && (
         <div className="checkout-page-container">
           <div>
             <div className="checkout-title-row">
-              <button className="btn-back-link" onClick={() => setView('cart')}>
+              <button 
+                className="btn-back-link" 
+                onClick={() => {
+                  if (checkoutStep === 4) {
+                    setView(isUserLoggedIn ? 'client-dashboard' : 'home');
+                  } else {
+                    setView('cart');
+                  }
+                }}
+              >
                 <ArrowLeft size={16} />
               </button>
               <h2 className="section-title" style={{ textAlign: 'left', marginTop: 0 }}>
-                Checkout <span>Booking</span>
+                {checkoutStep === 4 ? <>Booking <span>Receipt</span></> : <>Checkout <span>Booking</span></>}
               </h2>
             </div>
 
@@ -3888,16 +3897,66 @@ export default function App() {
                       )}
                     </div>
                   ) : isPending ? (
-                    <div style={{ textAlign: 'center', marginBottom: '20px' }} className="no-print">
-                      <div style={{ color: 'var(--accent-cyan)', display: 'inline-flex', justifyContent: 'center', marginBottom: '12px' }}>
-                        <Clock size={56} className="textColor-cyan" />
+                    <div style={{ textAlign: 'center', padding: '10px 0' }} className="no-print">
+                      <div style={{ color: 'var(--accent-cyan)', display: 'inline-flex', justifyContent: 'center', marginBottom: '16px' }}>
+                        <Clock size={64} className="textColor-cyan" style={{ filter: 'drop-shadow(0 0 10px rgba(0, 229, 255, 0.3))' }} />
                       </div>
-                      <h3 className="section-title" style={{ marginTop: 0 }}>Permission <span>Pending</span></h3>
-                      <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: '4px 0 16px 0' }}>
-                        Your documents are being verified by our compliance team. Reference: <strong>{createdBooking.id}</strong>.
-                      </p>
-                      <div style={{ background: 'rgba(0, 229, 255, 0.05)', border: '1px solid rgba(0, 229, 255, 0.2)', padding: '12px 16px', borderRadius: '8px', display: 'inline-block', fontSize: '13px', maxWidth: '500px' }}>
-                        ⚠️ You will be able to download the official receipt as a PDF and confirm on WhatsApp once the admin approves your verification documents.
+                      <h3 className="section-title" style={{ marginTop: 0 }}>Verification <span>Pending</span></h3>
+                      
+                      <div style={{ 
+                        background: 'rgba(255, 171, 0, 0.08)', 
+                        border: '1px solid rgba(255, 171, 0, 0.3)', 
+                        padding: '16px 20px', 
+                        borderRadius: '10px', 
+                        fontSize: '14px', 
+                        lineHeight: '1.5',
+                        color: '#ffb300',
+                        maxWidth: '520px', 
+                        margin: '0 auto 24px auto',
+                        fontWeight: '600',
+                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)'
+                      }}>
+                        ⚠️ You will receive receipt after confirmation or payment will be refunded within 24 hours.
+                      </div>
+
+                      <div style={{ 
+                        background: 'rgba(255, 255, 255, 0.02)', 
+                        border: '1px solid var(--border)', 
+                        borderRadius: '10px', 
+                        padding: '20px', 
+                        maxWidth: '520px', 
+                        margin: '0 auto', 
+                        textAlign: 'left' 
+                      }}>
+                        <h4 style={{ margin: '0 0 12px 0', color: 'var(--accent-cyan)', borderBottom: '1px solid var(--border)', paddingBottom: '8px', fontSize: '14px' }}>
+                          Booking Information
+                        </h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '13px' }}>
+                          <div>
+                            <span style={{ color: 'var(--text-secondary)' }}>Booking ID:</span><br />
+                            <strong>{createdBooking.id}</strong>
+                          </div>
+                          <div>
+                            <span style={{ color: 'var(--text-secondary)' }}>Status:</span><br />
+                            <span style={{ color: '#ffb300', fontWeight: 'bold' }}>Pending Approval</span>
+                          </div>
+                          <div>
+                            <span style={{ color: 'var(--text-secondary)' }}>Amount Paid:</span><br />
+                            <strong>₹{(createdBooking.totalAmount || 0).toFixed(2)}</strong>
+                          </div>
+                          <div>
+                            <span style={{ color: 'var(--text-secondary)' }}>Payment Method:</span><br />
+                            <strong>{createdBooking.paymentMethod || 'UPI'}</strong>
+                          </div>
+                          <div>
+                            <span style={{ color: 'var(--text-secondary)' }}>Delivery Slot:</span><br />
+                            <strong>{createdBooking.deliverySlot}</strong>
+                          </div>
+                          <div>
+                            <span style={{ color: 'var(--text-secondary)' }}>Customer Name:</span><br />
+                            <strong>{sigName || 'Customer'}</strong>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ) : (
@@ -3912,165 +3971,167 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* Printable Invoice E-Bill Area */}
-                  <div id="invoice-print-area" style={{ background: '#0a0d18', border: '1px solid var(--border)', padding: '24px', borderRadius: '12px', color: '#fff', fontSize: '12px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '16px', marginBottom: '16px' }}>
-                      <div>
-                        <h2 style={{ fontFamily: 'var(--font-display)', color: 'var(--accent-cyan)', margin: '0 0 4px 0', fontSize: '18px' }}>Elite PS Rentals</h2>
-                        <span style={{ color: 'var(--text-secondary)' }}>Vasai, Palghar, Maharashtra - 401201</span>
+                  {/* Printable Invoice E-Bill Area (Rendered ONLY when Approved) */}
+                  {isApproved && (
+                    <div id="invoice-print-area" style={{ background: '#0a0d18', border: '1px solid var(--border)', padding: '24px', borderRadius: '12px', color: '#fff', fontSize: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '16px', marginBottom: '16px' }}>
+                        <div>
+                          <h2 style={{ fontFamily: 'var(--font-display)', color: 'var(--accent-cyan)', margin: '0 0 4px 0', fontSize: '18px' }}>Elite PS Rentals</h2>
+                          <span style={{ color: 'var(--text-secondary)' }}>Vasai, Palghar, Maharashtra - 401201</span>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <h4 style={{ margin: '0 0 4px 0', fontSize: '14px' }}>E-BILL INVOICE</h4>
+                          <span style={{ color: 'var(--text-secondary)' }}>Invoice ID: {createdBooking.id}</span><br />
+                          <span style={{ color: 'var(--text-secondary)' }}>Date: {new Date(createdBooking.createdAt || Date.now()).toLocaleDateString()}</span>
+                        </div>
                       </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <h4 style={{ margin: '0 0 4px 0', fontSize: '14px' }}>E-BILL INVOICE</h4>
-                        <span style={{ color: 'var(--text-secondary)' }}>Invoice ID: {createdBooking.id}</span><br />
-                        <span style={{ color: 'var(--text-secondary)' }}>Date: {new Date(createdBooking.createdAt || Date.now()).toLocaleDateString()}</span>
-                      </div>
-                    </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                      <div>
-                        <h4 style={{ textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '6px', fontSize: '11px' }}>Renter Information</h4>
-                        <strong>{sigName || 'Customer'}</strong><br />
-                        <span>Phone: {createdBooking.phone}</span><br />
-                        <span>Email: {createdBooking.email}</span><br />
-                        <span>Address: {createdBooking.address}</span>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                        <div>
+                          <h4 style={{ textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '6px', fontSize: '11px' }}>Renter Information</h4>
+                          <strong>{sigName || 'Customer'}</strong><br />
+                          <span>Phone: {createdBooking.phone}</span><br />
+                          <span>Email: {createdBooking.email}</span><br />
+                          <span>Address: {createdBooking.address}</span>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <h4 style={{ textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '6px', fontSize: '11px' }}>Delivery Schedule</h4>
+                          <span>Slot: <strong>{createdBooking.deliverySlot}</strong></span><br />
+                          {createdBooking.items && createdBooking.items[0] && (
+                            <span>Rent Span: {createdBooking.items[0].startDate} to {createdBooking.items[0].endDate}</span>
+                          )}
+                        </div>
                       </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <h4 style={{ textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '6px', fontSize: '11px' }}>Delivery Schedule</h4>
-                        <span>Slot: <strong>{createdBooking.deliverySlot}</strong></span><br />
-                        {createdBooking.items && createdBooking.items[0] && (
-                          <span>Rent Span: {createdBooking.items[0].startDate} to {createdBooking.items[0].endDate}</span>
-                        )}
-                      </div>
-                    </div>
 
-                    <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
-                          <th style={{ textAlign: 'left', padding: '6px 0' }}>Rental Hardware Item</th>
-                          <th style={{ textAlign: 'center', padding: '6px 0' }}>Tenure Plan</th>
-                          <th style={{ textAlign: 'center', padding: '6px 0' }}>Dates</th>
-                          <th style={{ textAlign: 'right', padding: '6px 0' }}>Rate</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(createdBooking.items || []).map((item, idx) => (
-                          <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                            <td style={{ padding: '10px 0' }}>
-                              <strong>{item.name} {item.quantity > 1 ? `(x${item.quantity})` : ''}</strong>
-                            </td>
-                            <td style={{ textAlign: 'center', padding: '10px 0' }}>{item.planLabel}</td>
-                            <td style={{ textAlign: 'center', padding: '10px 0' }}>{item.startDate} to {item.endDate}</td>
-                            <td style={{ textAlign: 'right', padding: '10px 0' }}>₹{((item.rate || 0) * (item.quantity || 1)).toFixed(2)}</td>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+                            <th style={{ textAlign: 'left', padding: '6px 0' }}>Rental Hardware Item</th>
+                            <th style={{ textAlign: 'center', padding: '6px 0' }}>Tenure Plan</th>
+                            <th style={{ textAlign: 'center', padding: '6px 0' }}>Dates</th>
+                            <th style={{ textAlign: 'right', padding: '6px 0' }}>Rate</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {(createdBooking.items || []).map((item, idx) => (
+                            <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                              <td style={{ padding: '10px 0' }}>
+                                <strong>{item.name} {item.quantity > 1 ? `(x${item.quantity})` : ''}</strong>
+                              </td>
+                              <td style={{ textAlign: 'center', padding: '10px 0' }}>{item.planLabel}</td>
+                              <td style={{ textAlign: 'center', padding: '10px 0' }}>{item.startDate} to {item.endDate}</td>
+                              <td style={{ textAlign: 'right', padding: '10px 0' }}>₹{((item.rate || 0) * (item.quantity || 1)).toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
-                      <div>
-                        <div style={{ color: 'var(--text-secondary)', fontStyle: 'italic', maxWidth: '280px', fontSize: '10px', lineHeight: '1.4' }}>
-                          * Zero Deposit rental terms. Renter agrees to keep equipment in clean, dry indoor condition. Liability for damage resides with renter.
-                        </div>
-                      </div>
-                      <div style={{ minWidth: '180px', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0' }}>
-                          <span>Subtotal:</span>
-                          <span>₹{(createdBooking.totalAmount ? (createdBooking.totalAmount - 149 - (createdBooking.discountAmount || 0)) / 1.18 : 0).toFixed(2)}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0' }}>
-                          <span>GST Tax (18%):</span>
-                          <span>₹{(createdBooking.totalAmount ? ((createdBooking.totalAmount - 149 - (createdBooking.discountAmount || 0)) / 1.18) * 0.18 : 0).toFixed(2)}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0' }}>
-                          <span>Delivery Slot Fee:</span>
-                          <span>₹149.00</span>
-                        </div>
-                        {(createdBooking.discountAmount || 0) > 0 && (
-                          <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0', color: 'var(--accent-cyan)' }}>
-                            <span>Discounts:</span>
-                            <span>-₹{(createdBooking.discountAmount || 0).toFixed(2)}</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
+                        <div>
+                          <div style={{ color: 'var(--text-secondary)', fontStyle: 'italic', maxWidth: '280px', fontSize: '10px', lineHeight: '1.4' }}>
+                            * Zero Deposit rental terms. Renter agrees to keep equipment in clean, dry indoor condition. Liability for damage resides with renter.
                           </div>
-                        )}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0 0 0', borderTop: '1px solid var(--border)', paddingTop: '6px', fontWeight: 'bold', fontSize: '13px' }}>
-                          <span>Grand Total:</span>
-                          <span style={{ color: 'var(--accent-cyan)' }}>₹{(createdBooking.totalAmount || 0).toFixed(2)}</span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0', fontSize: '10px', color: 'var(--text-secondary)' }}>
-                          <span>Payment Status:</span>
-                          <span>{createdBooking.status === 'Cancelled' ? 'Refunded' : 'Paid Via ' + createdBooking.paymentMethod}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Verification Proofs Attachment */}
-                    {(selfieImg || idImg) && (
-                      <div style={{ marginTop: '24px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
-                        <h4 style={{ textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '12px', fontSize: '11px', letterSpacing: '1px' }}>
-                          Security Verification Proofs
-                        </h4>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                          {selfieImg && (
-                            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
-                              <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 'bold' }}>
-                                LIVE VERIFICATION SELFIE
-                              </span>
-                              <img 
-                                src={selfieImg} 
-                                alt="Live Selfie" 
-                                style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '6px', border: '1px solid rgba(0, 229, 255, 0.2)', objectFit: 'contain' }} 
-                              />
+                        <div style={{ minWidth: '180px', textAlign: 'right' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0' }}>
+                            <span>Subtotal:</span>
+                            <span>₹{(createdBooking.totalAmount ? (createdBooking.totalAmount - 149 - (createdBooking.discountAmount || 0)) / 1.18 : 0).toFixed(2)}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0' }}>
+                            <span>GST Tax (18%):</span>
+                            <span>₹{(createdBooking.totalAmount ? ((createdBooking.totalAmount - 149 - (createdBooking.discountAmount || 0)) / 1.18) * 0.18 : 0).toFixed(2)}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0' }}>
+                            <span>Delivery Slot Fee:</span>
+                            <span>₹149.00</span>
+                          </div>
+                          {(createdBooking.discountAmount || 0) > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0', color: 'var(--accent-cyan)' }}>
+                              <span>Discounts:</span>
+                              <span>-₹{(createdBooking.discountAmount || 0).toFixed(2)}</span>
                             </div>
                           )}
-                          {idImg && (
-                            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
-                              <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 'bold' }}>
-                                IDENTITY PROOF DOCUMENT
-                              </span>
-                              <img 
-                                src={idImg} 
-                                alt="ID Document" 
-                                style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '6px', border: '1px solid rgba(0, 229, 255, 0.2)', objectFit: 'contain' }} 
-                              />
-                            </div>
-                          )}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0 0 0', borderTop: '1px solid var(--border)', paddingTop: '6px', fontWeight: 'bold', fontSize: '13px' }}>
+                            <span>Grand Total:</span>
+                            <span style={{ color: 'var(--accent-cyan)' }}>₹{(createdBooking.totalAmount || 0).toFixed(2)}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0', fontSize: '10px', color: 'var(--text-secondary)' }}>
+                            <span>Payment Status:</span>
+                            <span>{createdBooking.status === 'Cancelled' ? 'Refunded' : 'Paid Via ' + (createdBooking.paymentMethod || 'UPI')}</span>
+                          </div>
                         </div>
                       </div>
-                    )}
 
-                    {/* Accepted Terms Agreement */}
-                    <div style={{ marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
-                      <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '6px' }}>
-                        ACCEPTED TERMS & CONDITIONS
-                      </span>
-                      <ul style={{ paddingLeft: '14px', margin: 0, fontSize: '10px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-                        {RENTAL_TERMS.slice(0, 5).map((term, i) => (
-                          <li key={i}>{term}</li>
-                        ))}
-                      </ul>
-                    </div>
+                      {/* Verification Proofs Attachment */}
+                      {(selfieImg || idImg) && (
+                        <div style={{ marginTop: '24px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+                          <h4 style={{ textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '12px', fontSize: '11px', letterSpacing: '1px' }}>
+                            Security Verification Proofs
+                          </h4>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                            {selfieImg && (
+                              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
+                                <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 'bold' }}>
+                                  LIVE VERIFICATION SELFIE
+                                </span>
+                                <img 
+                                  src={selfieImg} 
+                                  alt="Live Selfie" 
+                                  style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '6px', border: '1px solid rgba(0, 229, 255, 0.2)', objectFit: 'contain' }} 
+                                />
+                              </div>
+                            )}
+                            {idImg && (
+                              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
+                                <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 'bold' }}>
+                                  IDENTITY PROOF DOCUMENT
+                                </span>
+                                <img 
+                                  src={idImg} 
+                                  alt="ID Document" 
+                                  style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '6px', border: '1px solid rgba(0, 229, 255, 0.2)', objectFit: 'contain' }} 
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
 
-                    {/* Digital Signature */}
-                    {sigImg && (
+                      {/* Accepted Terms Agreement */}
                       <div style={{ marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div>
-                            <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>Consent Status:</span><br />
-                            <span style={{ color: 'var(--accent-green)', fontWeight: 'bold', fontSize: '10px' }}>✓ E-SIGNATURE VERIFIED</span>
-                          </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <span style={{ fontSize: '9px', color: 'var(--text-secondary)', display: 'block' }}>Signed Digitally By:</span>
-                            <strong style={{ fontFamily: 'Georgia, serif', fontSize: '14px', color: 'var(--accent-cyan)', fontStyle: 'italic' }}>
-                              {sigName}
-                            </strong>
-                          </div>
-                        </div>
-                        <div style={{ marginTop: '8px', border: '1px dashed rgba(0,229,255,0.3)', borderRadius: '6px', background: 'rgba(0,229,255,0.02)', padding: '6px', textAlign: 'center' }}>
-                          <span style={{ fontSize: '9px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>HAND-DRAWN SIGNATURE</span>
-                          <img src={sigImg} alt="Digital Signature" style={{ maxHeight: '60px', filter: 'brightness(1.2)' }} />
-                        </div>
+                        <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '6px' }}>
+                          ACCEPTED TERMS & CONDITIONS
+                        </span>
+                        <ul style={{ paddingLeft: '14px', margin: 0, fontSize: '10px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                          {RENTAL_TERMS.slice(0, 5).map((term, i) => (
+                            <li key={i}>{term}</li>
+                          ))}
+                        </ul>
                       </div>
-                    )}
-                  </div>
+
+                      {/* Digital Signature */}
+                      {sigImg && (
+                        <div style={{ marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>Consent Status:</span><br />
+                              <span style={{ color: 'var(--accent-green)', fontWeight: 'bold', fontSize: '10px' }}>✓ E-SIGNATURE VERIFIED</span>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              <span style={{ fontSize: '9px', color: 'var(--text-secondary)', display: 'block' }}>Signed Digitally By:</span>
+                              <strong style={{ fontFamily: 'Georgia, serif', fontSize: '14px', color: 'var(--accent-cyan)', fontStyle: 'italic' }}>
+                                {sigName}
+                              </strong>
+                            </div>
+                          </div>
+                          <div style={{ marginTop: '8px', border: '1px dashed rgba(0,229,255,0.3)', borderRadius: '6px', background: 'rgba(0,229,255,0.02)', padding: '6px', textAlign: 'center' }}>
+                            <span style={{ fontSize: '9px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>HAND-DRAWN SIGNATURE</span>
+                            <img src={sigImg} alt="Digital Signature" style={{ maxHeight: '60px', filter: 'brightness(1.2)' }} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div style={{ marginTop: '24px', display: 'flex', gap: '12px', justifyContent: 'center' }} className="no-print">
                     {isApproved ? (
@@ -4100,8 +4161,8 @@ export default function App() {
                         ❌ Verification Rejected (Order Cancelled)
                       </div>
                     )}
-                    <button className="btn-clipboard" onClick={() => { setCart([]); setView('home'); }}>
-                      Back to Catalog
+                    <button className="btn-clipboard" onClick={() => { setCart([]); setView(isUserLoggedIn ? 'client-dashboard' : 'home'); }}>
+                      {isUserLoggedIn ? 'Back to Dashboard' : 'Back to Catalog'}
                     </button>
                   </div>
                 </div>
