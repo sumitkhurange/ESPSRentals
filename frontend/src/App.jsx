@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, MapPin, ShoppingCart, User, Star, Play, Copy, Plus, Minus, 
   ChevronRight, ChevronDown, ChevronUp, Check, FileText, Upload, 
@@ -1029,7 +1029,7 @@ export default function App() {
 
   const fetchProducts = async () => {
     try {
-      let url = '/api/products';
+      let url = `${API}/api/products`;
       const params = [];
       if (activeCategory !== 'All') params.push(`category=${encodeURIComponent(activeCategory)}`);
       if (searchQuery) params.push(`search=${encodeURIComponent(searchQuery)}`);
