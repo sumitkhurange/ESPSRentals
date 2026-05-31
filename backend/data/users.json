@@ -1,0 +1,75 @@
+[
+  {
+    "id": "U1779609327124",
+    "email": "bhavyadavane1409@gmail.com",
+    "name": "Bhavya",
+    "phone": "8007301794",
+    "passwordHash": "$2b$10$mCYPlq90TUns/L.aCQqL3edC6nkBK.56dOpBnbOPeb/bZOV2qh3rK",
+    "verified": true,
+    "createdAt": "2026-05-24T07:55:27.124Z",
+    "gender": "Prefer not to say",
+    "birthday": "Not set",
+    "language": "English (United States)",
+    "homeAddress": "boisar",
+    "workAddress": "Not set"
+  },
+  {
+    "id": "U1779617104902",
+    "email": "testuser@example.com",
+    "name": "Test User Updated",
+    "phone": "+919876543211",
+    "passwordHash": "$2b$10$jWguHVK90x2zMUwf22sxVOdwyXFAf4pSv4wbazOfhlno5DengSOMa",
+    "verified": true,
+    "createdAt": "2026-05-24T10:05:04.902Z",
+    "gender": "Prefer not to say",
+    "birthday": "Not set",
+    "language": "English (United States)",
+    "homeAddress": "Not set",
+    "workAddress": "Not set"
+  },
+  {
+    "id": "U1779855665738",
+    "email": "phoneuser@example.com",
+    "name": "Test User Phone",
+    "phone": "9876543210",
+    "passwordHash": "$2b$10$MgEOyDny25y2URySEiSmq.2o0vmNQtyX46AURJfEiOXMll.nZs2XC",
+    "verified": true,
+    "createdAt": "2026-05-27T04:21:05.738Z"
+  },
+  {
+    "id": "U1779863124678",
+    "email": "recaptcha@example.com",
+    "name": "Recaptcha Test User",
+    "phone": "9999999999",
+    "passwordHash": "$2b$10$wREhRsm8ic/AX/WN830jje/DQQ9bzUcSExwPgA1mUNvL3nbrtffyW",
+    "verified": true,
+    "createdAt": "2026-05-27T06:25:24.678Z"
+  },
+  {
+    "id": "U1779946003732",
+    "email": "sumitkhurange123@gmail.com",
+    "name": "Sumit khurange",
+    "phone": "",
+    "passwordHash": "",
+    "verified": true,
+    "createdAt": "2026-05-28T05:26:43.732Z"
+  },
+  {
+    "id": "U1779952177190",
+    "email": "testuser123@example.com",
+    "name": "Test User Updated",
+    "phone": "9876543211",
+    "passwordHash": "$2b$10$LY2u7ABFkanfRTWP7orB/et5uVvvEnBmBwndRb7py.zUuGHuvzuhK",
+    "verified": true,
+    "createdAt": "2026-05-28T07:09:37.190Z"
+  },
+  {
+    "id": "U1779954195039",
+    "email": "sumit@gmail.com",
+    "name": "sumit khurange",
+    "phone": "+918180807208",
+    "passwordHash": "$2b$10$Cw6M/pdnyvPI0hqQqMFl1.7xhNqLNb4isIvrdZdrWlX5A.hQyLGt.",
+    "verified": true,
+    "createdAt": "2026-05-28T07:43:15.039Z"
+  }
+]

@@ -1,0 +1,20 @@
+[
+  {
+    "token": "779063",
+    "userId": "U1779609327124",
+    "type": "password_reset",
+    "expiresAt": 1779688801029
+  },
+  {
+    "token": "4A215D",
+    "userId": "U1779617104902",
+    "type": "password_reset",
+    "expiresAt": 1779952637034
+  },
+  {
+    "token": "126696",
+    "userId": "U1779609327124",
+    "type": "password_reset",
+    "expiresAt": 1780034119522
+  }
+]

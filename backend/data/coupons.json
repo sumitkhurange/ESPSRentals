@@ -1,0 +1,16 @@
+[
+  {
+    "code": "FIRST10",
+    "discountType": "percent",
+    "value": 10,
+    "minOrders": 0,
+    "description": "10% OFF on your first booking rental!"
+  },
+  {
+    "code": "LOYAL10",
+    "discountType": "percent",
+    "value": 10,
+    "minOrders": 3,
+    "description": "10% OFF Loyalty Discount (Requires 3+ successful rentals)!"
+  }
+]

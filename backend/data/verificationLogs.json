@@ -1,0 +1,66 @@
+[
+  {
+    "id": "LOG-1779954195034-3252",
+    "type": "phone_verified",
+    "email": "sumit@gmail.com",
+    "phone": "+918180807208",
+    "details": "Mobile phone verified successfully",
+    "timestamp": "2026-05-28T07:43:15.034Z"
+  },
+  {
+    "id": "LOG-1779952177186-3557",
+    "type": "phone_verified",
+    "email": "testuser123@example.com",
+    "phone": "9876543211",
+    "details": "Mobile phone verified successfully",
+    "timestamp": "2026-05-28T07:09:37.186Z"
+  },
+  {
+    "id": "LOG-1779863124669-9216",
+    "type": "phone_verified",
+    "email": "recaptcha@example.com",
+    "phone": "9999999999",
+    "details": "Mobile phone verified successfully",
+    "timestamp": "2026-05-27T06:25:24.672Z"
+  },
+  {
+    "id": "LOG-1779855665732-8944",
+    "type": "phone_verified",
+    "email": "phoneuser@example.com",
+    "phone": "9876543210",
+    "details": "Mobile phone verified successfully",
+    "timestamp": "2026-05-27T04:21:05.732Z"
+  },
+  {
+    "id": "LOG-1779617104899-7659",
+    "type": "phone_verified",
+    "email": "testuser@example.com",
+    "phone": "+919876543211",
+    "details": "Mobile phone verified successfully",
+    "timestamp": "2026-05-24T10:05:04.899Z"
+  },
+  {
+    "id": "LOG-1779617083320-6999",
+    "type": "email_verified",
+    "email": "testuser@example.com",
+    "phone": "+919876543211",
+    "details": "Email verified successfully",
+    "timestamp": "2026-05-24T10:04:43.320Z"
+  },
+  {
+    "id": "LOG-1779609327122-2963",
+    "type": "phone_verified",
+    "email": "bhavyadavane1409@gmail.com",
+    "phone": "8007301794",
+    "details": "Mobile phone verified successfully",
+    "timestamp": "2026-05-24T07:55:27.122Z"
+  },
+  {
+    "id": "LOG-1779609314618-8093",
+    "type": "email_verified",
+    "email": "bhavyadavane1409@gmail.com",
+    "phone": "8007301794",
+    "details": "Email verified successfully",
+    "timestamp": "2026-05-24T07:55:14.618Z"
+  }
+]

@@ -1,0 +1,512 @@
+[
+  {
+    "id": "ps5-standard",
+    "name": "PlayStation 5 Console (Standard Edition)",
+    "category": "PS5",
+    "image": "/images/ps5.png",
+    "rating": 4.9,
+    "brand": "Sony Interactive Entertainment",
+    "pricePlans": [
+      {
+        "label": "1 Day",
+        "rate": 950,
+        "period": "day",
+        "days": 1
+      },
+      {
+        "label": "2 Days",
+        "rate": 700,
+        "period": "day",
+        "days": 2
+      },
+      {
+        "label": "3 Days",
+        "rate": 500,
+        "period": "day",
+        "days": 3
+      },
+      {
+        "label": "1 Week",
+        "rate": 500,
+        "period": "week",
+        "days": 7
+      },
+      {
+        "label": "1 Month",
+        "rate": 7000,
+        "period": "month",
+        "days": 30
+      }
+    ],
+    "features": [
+      "Ultra-High Speed SSD for faster loading",
+      "4K-TV Gaming & 120Hz Output support",
+      "Tempest 3D AudioTech",
+      "Ray Tracing support"
+    ],
+    "about": "Rent the flagship PlayStation 5 Standard Edition in Vasai. Immerse yourself in worlds with a new level of realism as rays of light are individually simulated, creating true-to-life shadows and reflections in supported games. Standard edition features a disk drive so you can play your physical media.",
+    "included": [
+      "PlayStation 5 Console (with Disc Drive)",
+      "DualSense Wireless Controller",
+      "HDMI Cable & Power Cord",
+      "Console Base Stand",
+      "Pre-loaded Astro's Playroom"
+    ],
+    "faqs": [
+      {
+        "q": "Is security deposit required?",
+        "a": "No, Elite PS Rentals offers all gaming equipment with zero security deposit."
+      },
+      {
+        "q": "What documents are required?",
+        "a": "You need a government address ID (Aadhaar/Driving License) and a quick selfie check."
+      }
+    ],
+    "stock": 2,
+    "bookedCount": 153,
+    "isHot": true,
+    "isLastStock": true
+  },
+  {
+    "id": "ps4-pro",
+    "name": "PlayStation 4 Pro (1TB Console Bundle)",
+    "category": "PS5",
+    "image": "/images/ps4.png",
+    "rating": 4.7,
+    "brand": "Sony",
+    "pricePlans": [
+      {
+        "label": "1 Day",
+        "rate": 490,
+        "period": "day",
+        "days": 1
+      },
+      {
+        "label": "2 Days",
+        "rate": 420,
+        "period": "day",
+        "days": 2
+      },
+      {
+        "label": "3 Days",
+        "rate": 350,
+        "period": "day",
+        "days": 3
+      },
+      {
+        "label": "1 Week",
+        "rate": 1490,
+        "period": "week",
+        "days": 7
+      },
+      {
+        "label": "1 Month",
+        "rate": 4990,
+        "period": "month",
+        "days": 30
+      }
+    ],
+    "features": [
+      "Spectacular 4K graphics & gaming",
+      "Boost Mode for enhanced FPS stability",
+      "1TB HDD Storage to store games",
+      "Includes 2 DualShock controllers"
+    ],
+    "about": "Get PS4 Pro console on rent in Mumbai. PS4 Pro outputs gameplay to your 4K TV. Enhanced graphics power makes worlds come alive with intense detail. Action becomes faster, smoother and more explosive with crystal-clear motion from faster and more stable frame rates.",
+    "included": [
+      "PlayStation 4 Pro 1TB Console",
+      "2x DualShock 4 Wireless Controllers",
+      "HDMI Cable & Power Cord",
+      "Micro-USB charging cable"
+    ],
+    "faqs": [
+      {
+        "q": "How many controllers are included?",
+        "a": "The PS4 Pro bundle includes 2 wireless controllers, making it perfect for couch co-op games like FIFA or Tekken."
+      }
+    ],
+    "stock": 0,
+    "bookedCount": 99,
+    "isHot": false,
+    "isLastStock": false
+  },
+  {
+    "id": "logitech-g29",
+    "name": "Logitech G29 Driving Force Steering Wheel & Pedals",
+    "category": "Steering",
+    "image": "/images/g29.png",
+    "rating": 4.8,
+    "brand": "Logitech G",
+    "pricePlans": [
+      {
+        "label": "1 Day",
+        "rate": 590,
+        "period": "day",
+        "days": 1
+      },
+      {
+        "label": "2 Days",
+        "rate": 500,
+        "period": "day",
+        "days": 2
+      },
+      {
+        "label": "3 Days",
+        "rate": 420,
+        "period": "day",
+        "days": 3
+      },
+      {
+        "label": "1 Week",
+        "rate": 1790,
+        "period": "week",
+        "days": 7
+      },
+      {
+        "label": "1 Month",
+        "rate": 5990,
+        "period": "month",
+        "days": 30
+      }
+    ],
+    "features": [
+      "Dual-motor force feedback mechanism",
+      "Helical gearing with anti-backlash",
+      "Easy-access game controls & LED indicators",
+      "Non-linear brake pedal mimics pressure"
+    ],
+    "about": "Uncompromising racing simulation steering wheel. Designed for PlayStation 5, PS4 and PC games, Driving Force steering wheel recreates the immersive sensation of real racing with realistic force feedback, helical gears, and hand-stitched leather grip.",
+    "included": [
+      "Logitech G29 Steering Wheel",
+      "Driving Force Pedal Unit (Clutch, Brake, Throttle)",
+      "Power Adapter",
+      "User Documentation"
+    ],
+    "faqs": [
+      {
+        "q": "Is it compatible with Gran Turismo 7 on PS5?",
+        "a": "Yes! The Logitech G29 is fully compatible with PS5 and provides realistic force feedback in Gran Turismo 7, F1, and Crew Motorfest."
+      }
+    ],
+    "stock": 3,
+    "bookedCount": 56,
+    "isHot": true,
+    "isLastStock": true
+  },
+  {
+    "id": "psvr2",
+    "name": "PlayStation VR2 Headset & Controllers",
+    "category": "VR",
+    "image": "/images/vr2.png",
+    "rating": 4.9,
+    "brand": "Sony",
+    "pricePlans": [
+      {
+        "label": "1 Day",
+        "rate": 250,
+        "period": "day",
+        "days": 1
+      },
+      {
+        "label": "2 Days",
+        "rate": 250,
+        "period": "day",
+        "days": 2
+      },
+      {
+        "label": "3 Days",
+        "rate": 250,
+        "period": "day",
+        "days": 3
+      },
+      {
+        "label": "1 Week",
+        "rate": 250,
+        "period": "week",
+        "days": 7
+      },
+      {
+        "label": "1 Month",
+        "rate": 250,
+        "period": "month",
+        "days": 30
+      }
+    ],
+    "features": [
+      "4K HDR Visuals via Dual OLED Screens",
+      "Intelligent Eye Tracking",
+      "Headset Feedback & Haptic Sense controllers",
+      "Single USB-C connection to PS5"
+    ],
+    "about": "Rent PlayStation VR2 in Vasai West. Experience the next generation of virtual reality gaming with stunning 4K HDR visuals, genre-defining games, and unique sensations from the revolutionary headset feedback and Sense controllers.",
+    "included": [
+      "PlayStation VR2 Headset",
+      "2x PS VR2 Sense Controllers (Left/Right) with straps",
+      "USB-C Charging Cable",
+      "Stereo headphones with earpieces"
+    ],
+    "faqs": [
+      {
+        "q": "Is security deposit required?",
+        "a": "No, Elite PS Rentals offers all gaming equipment with zero security deposit."
+      },
+      {
+        "q": "What documents are required?",
+        "a": "You need a government address ID (Aadhaar/Driving License) and a quick selfie check."
+      }
+    ],
+    "stock": 2,
+    "bookedCount": 31,
+    "isHot": true,
+    "isLastStock": false
+  },
+  {
+    "id": "dualsense-edge",
+    "name": "Sony DualSense Edge Wireless Controller",
+    "category": "Controllers",
+    "image": "/images/edge_controller.png",
+    "rating": 4.6,
+    "brand": "Sony",
+    "pricePlans": [
+      {
+        "label": "1 Day",
+        "rate": 290,
+        "period": "day",
+        "days": 1
+      },
+      {
+        "label": "2 Days",
+        "rate": 240,
+        "period": "day",
+        "days": 2
+      },
+      {
+        "label": "3 Days",
+        "rate": 190,
+        "period": "day",
+        "days": 3
+      },
+      {
+        "label": "1 Week",
+        "rate": 790,
+        "period": "week",
+        "days": 7
+      },
+      {
+        "label": "1 Month",
+        "rate": 2490,
+        "period": "month",
+        "days": 30
+      }
+    ],
+    "features": [
+      "Mappable back buttons (Half-dome/Lever)",
+      "Adjustable trigger lengths & deadzones",
+      "Swappable stick modules & caps",
+      "Includes premium braided USB cable & lock"
+    ],
+    "about": "Get the competitive edge in your gaming with this ultra-customizable PS5 pro controller. Fine-tune your controller settings to match your playstyle, swap out stick caps or back buttons, and save custom profiles.",
+    "included": [
+      "DualSense Edge Wireless Controller",
+      "USB Braided Cable & Connector Housing",
+      "4x Back Buttons (2 levers, 2 half-domes)",
+      "4x Stick Caps (2 high, 2 low)",
+      "Carrying Case"
+    ],
+    "faqs": [
+      {
+        "q": "How long does the battery last?",
+        "a": "The battery lasts around 5-6 hours of active play. It comes with a 3m long braided USB cable for wired play and charging."
+      }
+    ],
+    "stock": 2,
+    "bookedCount": 63,
+    "isHot": false,
+    "isLastStock": false
+  },
+  {
+    "id": "fc25-ps5",
+    "name": "EA Sports FC 25 (PS5 Standard Edition)",
+    "category": "PS5",
+    "image": "/images/fc25.png",
+    "rating": 4.8,
+    "brand": "EA Sports",
+    "pricePlans": [
+      {
+        "label": "1 Day",
+        "rate": 150,
+        "period": "day",
+        "days": 1
+      },
+      {
+        "label": "2 Days",
+        "rate": 120,
+        "period": "day",
+        "days": 2
+      },
+      {
+        "label": "3 Days",
+        "rate": 100,
+        "period": "day",
+        "days": 3
+      },
+      {
+        "label": "1 Week",
+        "rate": 450,
+        "period": "week",
+        "days": 7
+      },
+      {
+        "label": "1 Month",
+        "rate": 1490,
+        "period": "month",
+        "days": 30
+      }
+    ],
+    "features": [
+      "HyperMotionV technology for realistic movements",
+      "Updated rosters and clubs for 2025/2026",
+      "Career Mode and Ultimate Team offline modes",
+      "Up to 4 players local multiplayer"
+    ],
+    "about": "Rent EA Sports FC 25 disc in Vasai. Experience the closest match to real football with hyper-realistic gameplay, new tactical modes (FC IQ), and local multiplayer. Perfect for house parties or competitive weekends with friends.",
+    "included": [
+      "EA Sports FC 25 PS5 Blu-ray Disc",
+      "Retail plastic game case"
+    ],
+    "faqs": [
+      {
+        "q": "Can I play online with this disc?",
+        "a": "Yes, if you have a PS Plus subscription on your PlayStation account, you can access all online features."
+      }
+    ],
+    "stock": 4,
+    "bookedCount": 114,
+    "isHot": true,
+    "isLastStock": false
+  },
+  {
+    "id": "spiderman2-ps5",
+    "name": "Marvel's Spider-Man 2 (PS5 Standard Edition)",
+    "category": "PS5",
+    "image": "/images/spiderman2.png",
+    "rating": 4.9,
+    "brand": "PlayStation Studios",
+    "pricePlans": [
+      {
+        "label": "1 Day",
+        "rate": 190,
+        "period": "day",
+        "days": 1
+      },
+      {
+        "label": "2 Days",
+        "rate": 160,
+        "period": "day",
+        "days": 2
+      },
+      {
+        "label": "3 Days",
+        "rate": 130,
+        "period": "day",
+        "days": 3
+      },
+      {
+        "label": "1 Week",
+        "rate": 590,
+        "period": "week",
+        "days": 7
+      },
+      {
+        "label": "1 Month",
+        "rate": 1990,
+        "period": "month",
+        "days": 30
+      }
+    ],
+    "features": [
+      "Play as Peter Parker and Miles Morales",
+      "Ray-traced graphics at 60 FPS performance mode",
+      "Fast-travel using custom SSD integration",
+      "DualSense haptic feedback web slinging"
+    ],
+    "about": "Spider-Men, Peter Parker and Miles Morales, return for an exciting new adventure in the critically acclaimed franchise. Swing, jump and utilize the new Web Wings to travel across Marvel's New York, switching between both Spider-Men.",
+    "included": [
+      "Marvel's Spider-Man 2 PS5 Blu-ray Disc",
+      "Retail plastic game case"
+    ],
+    "faqs": [
+      {
+        "q": "Is this game single-player only?",
+        "a": "Yes, Marvel's Spider-Man 2 is a single-player narrative action-adventure game."
+      }
+    ],
+    "stock": 3,
+    "bookedCount": 81,
+    "isHot": false,
+    "isLastStock": false
+  },
+  {
+    "id": "benq-projector",
+    "name": "BenQ TK700 4K HDR Gaming Projector",
+    "category": "VR",
+    "image": "/images/projector.png",
+    "rating": 4.9,
+    "brand": "BenQ",
+    "pricePlans": [
+      {
+        "label": "1 Day",
+        "rate": 1490,
+        "period": "day",
+        "days": 1
+      },
+      {
+        "label": "2 Days",
+        "rate": 1290,
+        "period": "day",
+        "days": 2
+      },
+      {
+        "label": "3 Days",
+        "rate": 1100,
+        "period": "day",
+        "days": 3
+      },
+      {
+        "label": "1 Week",
+        "rate": 4990,
+        "period": "week",
+        "days": 7
+      },
+      {
+        "label": "1 Month",
+        "rate": 14990,
+        "period": "month",
+        "days": 30
+      }
+    ],
+    "features": [
+      "True 4K UHD Resolution (3840x2160)",
+      "High refresh rate & ultra-low latency (4.2ms at 1080p@240Hz)",
+      "3200 ANSI Lumens for lit environments",
+      "Up to 150-inch projection screen size"
+    ],
+    "about": "Elevate your house party with a massive 150-inch display. The BenQ TK700 offers crisp 4K gaming output, extremely low input lag, and vibrant HDR colors. Compatible with PS5, PS4, Xbox, and HDMI devices.",
+    "included": [
+      "BenQ 4K Gaming Projector",
+      "Power Cable & HDMI 2.0 Cable",
+      "Projector Remote Controller",
+      "Premium padded transport case"
+    ],
+    "faqs": [
+      {
+        "q": "Do I need a dark room to use this projector?",
+        "a": "No, with a high brightness of 3200 ANSI Lumens, the TK700 produces clear images in standard indoor lighting conditions."
+      }
+    ],
+    "stock": 1,
+    "bookedCount": 24,
+    "isHot": true,
+    "isLastStock": true
+  }
+]
