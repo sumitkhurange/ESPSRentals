@@ -1790,7 +1790,11 @@ export default function App() {
           bank: paymentMethod === 'Netbanking' ? selectedBank : ''
         },
         totalAmount: getTotalPrice(),
-        status: 'Confirmed' // Directly verified
+        status: 'Booked', // Placed as Booked, pending manual admin verification
+        selfie: uploadedSelfie?.image || null,
+        identityID: uploadedID?.image || null,
+        signature: signatureCanvasData || null,
+        agreementAccepted: true
       };
 
       const headers = { 'Content-Type': 'application/json' };
@@ -1813,7 +1817,7 @@ export default function App() {
         setCouponCodeInput('');
         setCouponMessage('');
         setCheckoutStep(4); // Success step
-        showToast('Booking placed successfully!');
+        showToast('Booking submitted successfully! Waiting for admin document verification.');
         if (isUserLoggedIn && userToken) {
           fetchUserBookings(userToken);
           fetchMyEmails(userToken);
@@ -2010,6 +2014,29 @@ export default function App() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleVerifyDocuments = async (bookingId, status) => {
+    try {
+      const token = localStorage.getItem('eliteAdminToken');
+      const res = await fetch(`${API}/api/bookings/${bookingId}/verify`, {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ verificationStatus: status })
+      });
+      if (res.ok) {
+        showToast(`Verification ${status === 'Approved' ? 'Approved' : 'Rejected'} for booking ${bookingId}`);
+        fetchAdminData();
+      } else {
+        showToast('Failed to update verification status.');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Network error updating verification status.');
     }
   };
 
@@ -2268,6 +2295,12 @@ export default function App() {
                 onClick={() => { setView('admin'); setAdminTab('verification-logs'); setMenuOpen(false); }}
               >
                 <span>Verification Logs ({adminVerificationLogs.length})</span>
+              </div>
+              <div 
+                className={`drawer-link ${view === 'admin' && adminTab === 'verifications' ? 'active' : ''}`}
+                onClick={() => { setView('admin'); setAdminTab('verifications'); setMenuOpen(false); }}
+              >
+                <span>Pending Verifications ({adminBookings.filter(b => b.verificationStatus === 'Pending').length})</span>
               </div>
               <div 
                 className={`drawer-link ${view === 'home' ? 'active' : ''}`}
@@ -3644,164 +3677,61 @@ export default function App() {
               </div>
             )}
 
-            {/* Step 2: Payment Details */}
             {checkoutStep === 2 && (
               <div className="glass-panel checkout-steps-col">
                 <div className="checkout-step-header">
                   <span className="step-num-badge">2/4</span>
-                  <h3 className="step-title">Select Payment Method</h3>
+                  <h3 className="step-title">UPI Payment Scanner</h3>
                 </div>
 
-                <div className="payment-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
-                  {[
-                    { id: 'UPI', label: 'UPI QR', icon: Smartphone },
-                    { id: 'CreditCard', label: 'Credit Card', icon: CreditCard },
-                    { id: 'DebitCard', label: 'Debit Card', icon: CreditCard },
-                    { id: 'Netbanking', label: 'Net Banking', icon: Activity },
-                    { id: 'Wallet', label: 'Wallets', icon: Check }
-                  ].map((pay) => (
-                    <div 
-                      key={pay.id}
-                      className={`payment-option-card ${paymentMethod === pay.id ? 'active' : ''}`}
-                      onClick={() => setPaymentMethod(pay.id)}
-                      style={{ padding: '10px 5px', minWidth: '0' }}
-                    >
-                      <pay.icon size={16} />
-                      <div className="payment-option-label" style={{ fontSize: '11px' }}>{pay.label}</div>
-                    </div>
-                  ))}
+                <div className="payment-detail-form" style={{ textAlign: 'center' }}>
+                  <div className="upi-qr-display" style={{ display: 'inline-block', padding: '10px', background: '#fff', borderRadius: '8px', margin: '15px 0' }}>
+                    <img 
+                      src="/images/scanner.jpg" 
+                      alt="UPI Payment QR" 
+                      style={{ width: '200px', height: 'auto', display: 'block', borderRadius: '4px' }}
+                    />
+                  </div>
+                  <div style={{ fontSize: '15px', color: 'var(--accent-cyan)', fontWeight: 'bold' }}>
+                    Scan & Pay: ₹{getTotalPrice().toFixed(2)}
+                  </div>
+                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '10px 0', lineHeight: '1.4' }}>
+                    Scan the QR Code with any UPI app (GPay, PhonePe, Paytm, BHIM) and enter the 12-digit UPI Transaction ID.
+                  </p>
+                  
+                  <div className="form-group" style={{ textAlign: 'left', marginTop: '16px' }}>
+                    <label style={{ color: 'var(--accent-cyan)', fontWeight: 'bold', fontSize: '12px' }}>UPI Transaction ID (12 Digits)</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      placeholder="e.g. 612458925482" 
+                      value={upiTxnId}
+                      onChange={(e) => setUpiTxnId(e.target.value)}
+                    />
+                  </div>
                 </div>
-
-                {/* UPI scan QR block */}
-                {paymentMethod === 'UPI' && (
-                  <div className="payment-detail-form" style={{ textAlign: 'center' }}>
-                    <div className="upi-qr-display" style={{ display: 'inline-block', padding: '10px', background: '#fff', borderRadius: '8px', margin: '10px 0' }}>
-                      <img 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${encodeURIComponent(`upi://pay?pa=eliteps@upi&pn=ElitePSRentals&am=${getTotalPrice().toFixed(2)}&cu=INR`)}`} 
-                        alt="UPI Payment QR" 
-                        style={{ width: '130px', height: '130px' }}
-                      />
-                    </div>
-                    <div style={{ fontSize: '13px', color: 'var(--accent-cyan)', fontWeight: 'bold' }}>
-                      Scan & Pay: ₹{getTotalPrice().toFixed(2)}
-                    </div>
-                    <p style={{ fontSize: '11.5px', color: 'var(--text-secondary)', margin: '8px 0' }}>
-                      Scan the QR Code with GPay, Paytm, or PhonePe and enter the transaction ID.
-                    </p>
-                    <div className="form-group" style={{ textAlign: 'left' }}>
-                      <label>UPI Transaction ID (12 Digits)</label>
-                      <input 
-                        type="text" 
-                        className="form-input" 
-                        placeholder="Txn ID: e.g. 612458925482" 
-                        value={upiTxnId}
-                        onChange={(e) => setUpiTxnId(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Credit Card and Debit Card Form Blocks */}
-                {(paymentMethod === 'CreditCard' || paymentMethod === 'DebitCard') && (
-                  <div className="payment-detail-form">
-                    <div className="auth-form" style={{ marginTop: 0 }}>
-                      <div className="form-group">
-                        <label>Cardholder Name</label>
-                        <input type="text" className="form-input" placeholder="Neej Patel" />
-                      </div>
-                      <div className="form-group">
-                        <label>Card Number</label>
-                        <input 
-                          type="text" 
-                          className="form-input" 
-                          placeholder="4111 2222 3333 4444" 
-                          value={cardNumber}
-                          onChange={(e) => setCardNumber(e.target.value)}
-                        />
-                      </div>
-                      <div className="date-pickers-row">
-                        <div className="form-group">
-                          <label>Expiry Date</label>
-                          <input 
-                            type="text" 
-                            className="form-input" 
-                            placeholder="MM/YY" 
-                            value={cardExpiry}
-                            onChange={(e) => setCardExpiry(e.target.value)}
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label>CVV</label>
-                          <input 
-                            type="password" 
-                            className="form-input" 
-                            placeholder="***" 
-                            value={cardCvv}
-                            onChange={(e) => setCardCvv(e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Netbanking dropdown block */}
-                {paymentMethod === 'Netbanking' && (
-                  <div className="payment-detail-form">
-                    <div className="form-group">
-                      <label>Select Your Bank</label>
-                      <select 
-                        className="form-input"
-                        value={selectedBank}
-                        onChange={(e) => setSelectedBank(e.target.value)}
-                      >
-                        <option>State Bank of India</option>
-                        <option>HDFC Bank</option>
-                        <option>ICICI Bank</option>
-                        <option>Axis Bank</option>
-                        <option>Union Bank of India</option>
-                        <option>Kotak Mahindra Bank</option>
-                      </select>
-                    </div>
-                  </div>
-                )}
-
-                {/* Wallets option list block */}
-                {paymentMethod === 'Wallet' && (
-                  <div className="payment-detail-form">
-                    <div className="form-group">
-                      <label>Select Wallet App</label>
-                      <select className="form-input">
-                        <option>Paytm Wallet</option>
-                        <option>PhonePe Wallet</option>
-                        <option>Amazon Pay Wallet</option>
-                        <option>MobiKwik Wallet</option>
-                      </select>
-                    </div>
-                  </div>
-                )}
 
                 <button 
                   className="form-submit-btn" 
                   style={{ width: '100%', marginTop: '16px' }}
                   onClick={() => {
-                    if (paymentMethod === 'UPI' && !upiTxnId) {
+                    if (!upiTxnId.trim()) {
                       showToast('Please enter your UPI transaction ID.');
                       return;
                     }
-                    if ((paymentMethod === 'CreditCard' || paymentMethod === 'DebitCard') && (!cardNumber || !cardExpiry || !cardCvv)) {
-                      showToast('Please fill out your card details.');
+                    if (upiTxnId.trim().length !== 12 || isNaN(upiTxnId.trim())) {
+                      showToast('UPI Transaction ID must be a 12-digit number.', 'error');
                       return;
                     }
                     setIsSubmittingOrder(true);
                     setTimeout(() => {
                       setIsSubmittingOrder(false);
                       setCheckoutStep(3); // Go to Selfie liveness check
-                    }, 1200);
+                    }, 1000);
                   }}
                   disabled={isSubmittingOrder}
                 >
-                  {isSubmittingOrder ? "Confirming Payment..." : `Pay & Continue (₹${getTotalPrice().toFixed(2)})`}
+                  {isSubmittingOrder ? "Submitting..." : "Submit & Continue"}
                 </button>
               </div>
             )}
@@ -3811,7 +3741,7 @@ export default function App() {
               <div className="glass-panel checkout-steps-col">
                 <div className="checkout-step-header">
                   <span className="step-num-badge">3/4</span>
-                  <h3 className="step-title">ID & Face Liveness check</h3>
+                  <h3 className="step-title">ID & Face Verification</h3>
                 </div>
 
                 <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
@@ -3910,269 +3840,273 @@ export default function App() {
                   </div>
                 </div>
 
-                {isVerifyingAI && (
-                  <div style={{ margin: '20px 0', padding: '16px', background: 'rgba(0,229,255,0.05)', border: '1px solid var(--accent-cyan)', borderRadius: '8px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '12px' }}>
-                      <span style={{ color: 'var(--accent-cyan)', fontWeight: 'bold' }}>AI Face Match Liveness Scan...</span>
-                      <span>{aiMatchProgress}%</span>
-                    </div>
-                    <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${aiMatchProgress}%`, background: 'var(--accent-cyan)', boxShadow: 'var(--shadow-neon)', transition: 'width 0.2s' }} />
-                    </div>
-                  </div>
-                )}
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '16px' }}>
-                  <button 
-                    className="form-submit-btn" 
-                    onClick={() => {
-                      if (!uploadedSelfie || !uploadedID) {
-                        showToast("Please upload both selfie photo and ID document first.");
-                        return;
-                      }
-                      handleStartAIVerification(true);
-                    }}
-                    disabled={isVerifyingAI}
-                  >
-                    Submit AI Match (Pass)
-                  </button>
-                  <button 
-                    className="form-submit-btn" 
-                    style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}
-                    onClick={() => {
-                      if (!uploadedSelfie || !uploadedID) {
-                        showToast("Please upload both selfie photo and ID document first.");
-                        return;
-                      }
-                      handleStartAIVerification(false);
-                    }}
-                    disabled={isVerifyingAI}
-                  >
-                    Submit AI Match (Fail)
-                  </button>
-                </div>
+                <button 
+                  className="form-submit-btn" 
+                  style={{ width: '100%', marginTop: '16px' }}
+                  onClick={() => {
+                    if (!uploadedSelfie || !uploadedID) {
+                      showToast("Please upload both selfie photo and ID document first.");
+                      return;
+                    }
+                    triggerOrderPlacement();
+                  }}
+                  disabled={isSubmittingOrder}
+                >
+                  {isSubmittingOrder ? "Submitting documents..." : "Submit Verification"}
+                </button>
               </div>
             )}
 
             {/* Step 4: Receipt / E-Bill Invoice overview screen */}
-            {checkoutStep === 4 && createdBooking && (
-              <div className="glass-panel checkout-steps-col" style={{ padding: '30px' }}>
-                {createdBooking.status === 'Cancelled' ? (
-                  <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                    <div style={{ color: '#ef4444', display: 'inline-flex', justifyContent: 'center', marginBottom: '12px' }}>
-                      <AlertTriangle size={56} />
-                    </div>
-                    <h3 className="section-title" style={{ marginTop: 0 }}>Verification <span>Failed!</span></h3>
-                    <p style={{ color: '#ef4444', fontSize: '14px', margin: '4px 0 16px 0', fontWeight: 'bold' }}>
-                      Liveness Face Match check failed. Security criteria breached.
-                    </p>
-                    <div style={{ background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '16px', borderRadius: '8px', textAlign: 'left', fontSize: '13px' }}>
-                      <div style={{ marginBottom: '6px' }}><strong>Automatic Refund Triggered:</strong></div>
-                      <div style={{ color: 'var(--text-secondary)' }}>Reference: {createdBooking.id}</div>
-                      <div style={{ color: 'var(--text-secondary)' }}>Amount: ₹{createdBooking.totalAmount.toFixed(2)}</div>
-                      <div style={{ color: 'var(--text-secondary)' }}>Status: Processed & Returned to original payment channel.</div>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ textAlign: 'center', marginBottom: '20px' }} className="no-print">
-                    <div style={{ color: 'var(--accent-green)', display: 'inline-flex', justifyContent: 'center', marginBottom: '12px' }}>
-                      <CheckCircle2 size={56} />
-                    </div>
-                    <h3 className="section-title" style={{ marginTop: 0 }}>Booking <span>Confirmed!</span></h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: '4px 0 16px 0' }}>
-                      Verification passed! Your console gear will be delivered shortly. Reference: <strong>{createdBooking.id}</strong>.
-                    </p>
-                  </div>
-                )}
+            {checkoutStep === 4 && createdBooking && (() => {
+              const selfieImg = createdBooking.selfie || uploadedSelfie?.image;
+              const idImg = createdBooking.identityID || uploadedID?.image;
+              const sigImg = createdBooking.signature || signatureCanvasData;
+              const sigName = createdBooking.customerName || signatureName;
+              const isApproved = createdBooking.verificationStatus === 'Approved';
+              const isPending = createdBooking.verificationStatus === 'Pending';
+              const isRejected = createdBooking.verificationStatus === 'Rejected' || createdBooking.status === 'Cancelled';
 
-                {/* Printable Invoice E-Bill Area */}
-                <div id="invoice-print-area" style={{ background: '#0a0d18', border: '1px solid var(--border)', padding: '24px', borderRadius: '12px', color: '#fff', fontSize: '12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '16px', marginBottom: '16px' }}>
-                    <div>
-                      <h2 style={{ fontFamily: 'var(--font-display)', color: 'var(--accent-cyan)', margin: '0 0 4px 0', fontSize: '18px' }}>Elite PS Rentals</h2>
-                      <span style={{ color: 'var(--text-secondary)' }}>Vasai, Palghar, Maharashtra - 401201</span>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <h4 style={{ margin: '0 0 4px 0', fontSize: '14px' }}>E-BILL INVOICE</h4>
-                      <span style={{ color: 'var(--text-secondary)' }}>Invoice ID: {createdBooking.id}</span><br />
-                      <span style={{ color: 'var(--text-secondary)' }}>Date: {new Date().toLocaleDateString()}</span>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                    <div>
-                      <h4 style={{ textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '6px', fontSize: '11px' }}>Renter Information</h4>
-                      <strong>{customerName || createdBooking.customerName || 'Customer'}</strong><br />
-                      <span>Phone: {customerPhone || createdBooking.phone}</span><br />
-                      <span>Email: {customerEmail || createdBooking.email}</span><br />
-                      <span>Address: {deliveryAddress || createdBooking.address}</span>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <h4 style={{ textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '6px', fontSize: '11px' }}>Delivery Schedule</h4>
-                      <span>Slot: <strong>{deliverySlot || createdBooking.deliverySlot}</strong></span><br />
-                      {createdBooking.items && createdBooking.items[0] && (
-                        <span>Rent Span: {createdBooking.items[0].startDate} to {createdBooking.items[0].endDate}</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
-                        <th style={{ textAlign: 'left', padding: '6px 0' }}>Rental Hardware Item</th>
-                        <th style={{ textAlign: 'center', padding: '6px 0' }}>Tenure Plan</th>
-                        <th style={{ textAlign: 'center', padding: '6px 0' }}>Dates</th>
-                        <th style={{ textAlign: 'right', padding: '6px 0' }}>Rate</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(createdBooking.items || []).map((item, idx) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                          <td style={{ padding: '10px 0' }}>
-                            <strong>{item.name} {item.quantity > 1 ? `(x${item.quantity})` : ''}</strong>
-                          </td>
-                          <td style={{ textAlign: 'center', padding: '10px 0' }}>{item.planLabel}</td>
-                          <td style={{ textAlign: 'center', padding: '10px 0' }}>{item.startDate} to {item.endDate}</td>
-                          <td style={{ textAlign: 'right', padding: '10px 0' }}>₹{((item.rate || 0) * (item.quantity || 1)).toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
-                    <div>
-                      <div style={{ color: 'var(--text-secondary)', fontStyle: 'italic', maxWidth: '280px', fontSize: '10px', lineHeight: '1.4' }}>
-                        * Zero Deposit rental terms. Renter agrees to keep equipment in clean, dry indoor condition. Liability for damage resides with renter.
+              return (
+                <div className="glass-panel checkout-steps-col" style={{ padding: '30px' }}>
+                  {isRejected ? (
+                    <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                      <div style={{ color: '#ef4444', display: 'inline-flex', justifyContent: 'center', marginBottom: '12px' }}>
+                        <AlertTriangle size={56} />
                       </div>
-                    </div>
-                    <div style={{ minWidth: '180px', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0' }}>
-                        <span>Subtotal:</span>
-                        <span>₹{getSubtotal().toFixed(2)}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0' }}>
-                        <span>GST Tax (18%):</span>
-                        <span>₹{getTax().toFixed(2)}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0' }}>
-                        <span>Delivery Slot Fee:</span>
-                        <span>₹149.00</span>
-                      </div>
-                      {getDiscountAmount() > 0 && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0', color: 'var(--accent-cyan)' }}>
-                          <span>Discounts:</span>
-                          <span>-₹{getDiscountAmount().toFixed(2)}</span>
+                      <h3 className="section-title" style={{ marginTop: 0 }}>Verification <span>Rejected</span></h3>
+                      <p style={{ color: '#ef4444', fontSize: '14px', margin: '4px 0 16px 0', fontWeight: 'bold' }}>
+                        Your rental agreement or identity verification was rejected by compliance.
+                      </p>
+                      {createdBooking.status === 'Cancelled' && createdBooking.refundStatus && (
+                        <div style={{ background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '16px', borderRadius: '8px', textAlign: 'left', fontSize: '13px', marginTop: '10px' }}>
+                          <div style={{ marginBottom: '6px' }}><strong>Automatic Refund Triggered:</strong></div>
+                          <div style={{ color: 'var(--text-secondary)' }}>Reference: {createdBooking.id}</div>
+                          <div style={{ color: 'var(--text-secondary)' }}>Amount: ₹{(createdBooking.totalAmount || 0).toFixed(2)}</div>
+                          <div style={{ color: 'var(--text-secondary)' }}>Status: Processed & Returned to original payment channel.</div>
                         </div>
                       )}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0 0 0', borderTop: '1px solid var(--border)', paddingTop: '6px', fontWeight: 'bold', fontSize: '13px' }}>
-                        <span>Grand Total:</span>
-                        <span style={{ color: 'var(--accent-cyan)' }}>₹{getTotalPrice().toFixed(2)}</span>
+                    </div>
+                  ) : isPending ? (
+                    <div style={{ textAlign: 'center', marginBottom: '20px' }} className="no-print">
+                      <div style={{ color: 'var(--accent-cyan)', display: 'inline-flex', justifyContent: 'center', marginBottom: '12px' }}>
+                        <Clock size={56} className="textColor-cyan" />
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0', fontSize: '10px', color: 'var(--text-secondary)' }}>
-                        <span>Payment Status:</span>
-                        <span>{createdBooking.status === 'Cancelled' ? 'Refunded' : 'Paid Via ' + paymentMethod}</span>
+                      <h3 className="section-title" style={{ marginTop: 0 }}>Permission <span>Pending</span></h3>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: '4px 0 16px 0' }}>
+                        Your documents are being verified by our compliance team. Reference: <strong>{createdBooking.id}</strong>.
+                      </p>
+                      <div style={{ background: 'rgba(0, 229, 255, 0.05)', border: '1px solid rgba(0, 229, 255, 0.2)', padding: '12px 16px', borderRadius: '8px', display: 'inline-block', fontSize: '13px', maxWidth: '500px' }}>
+                        ⚠️ You will be able to download the official receipt as a PDF and confirm on WhatsApp once the admin approves your verification documents.
                       </div>
                     </div>
-                  </div>
-
-                  {/* Verification Proofs Attachment */}
-                  {(uploadedSelfie?.image || uploadedID?.image) && (
-                    <div style={{ marginTop: '24px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
-                      <h4 style={{ textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '12px', fontSize: '11px', letterSpacing: '1px' }}>
-                        Security Verification Proofs
-                      </h4>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                        {uploadedSelfie?.image && (
-                          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
-                            <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 'bold' }}>
-                              LIVE VERIFICATION SELFIE
-                            </span>
-                            <img 
-                              src={uploadedSelfie.image} 
-                              alt="Live Selfie" 
-                              style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '6px', border: '1px solid rgba(0, 229, 255, 0.2)', objectFit: 'contain' }} 
-                            />
-                          </div>
-                        )}
-                        {uploadedID?.image && (
-                          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
-                            <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 'bold' }}>
-                              IDENTITY PROOF DOCUMENT
-                            </span>
-                            <img 
-                              src={uploadedID.image} 
-                              alt="ID Document" 
-                              style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '6px', border: '1px solid rgba(0, 229, 255, 0.2)', objectFit: 'contain' }} 
-                            />
-                          </div>
-                        )}
+                  ) : (
+                    <div style={{ textAlign: 'center', marginBottom: '20px' }} className="no-print">
+                      <div style={{ color: 'var(--accent-green)', display: 'inline-flex', justifyContent: 'center', marginBottom: '12px' }}>
+                        <CheckCircle2 size={56} />
                       </div>
+                      <h3 className="section-title" style={{ marginTop: 0 }}>Booking <span>Confirmed!</span></h3>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: '4px 0 16px 0' }}>
+                        Verification passed! Your console gear will be delivered shortly. Reference: <strong>{createdBooking.id}</strong>.
+                      </p>
                     </div>
                   )}
 
-                  {/* Accepted Terms Agreement */}
-                  <div style={{ marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
-                    <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '6px' }}>
-                      ACCEPTED TERMS & CONDITIONS
-                    </span>
-                    <ul style={{ paddingLeft: '14px', margin: 0, fontSize: '10px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-                      {RENTAL_TERMS.slice(0, 5).map((term, i) => (
-                        <li key={i}>{term}</li>
-                      ))}
-                    </ul>
-                  </div>
+                  {/* Printable Invoice E-Bill Area */}
+                  <div id="invoice-print-area" style={{ background: '#0a0d18', border: '1px solid var(--border)', padding: '24px', borderRadius: '12px', color: '#fff', fontSize: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '16px', marginBottom: '16px' }}>
+                      <div>
+                        <h2 style={{ fontFamily: 'var(--font-display)', color: 'var(--accent-cyan)', margin: '0 0 4px 0', fontSize: '18px' }}>Elite PS Rentals</h2>
+                        <span style={{ color: 'var(--text-secondary)' }}>Vasai, Palghar, Maharashtra - 401201</span>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <h4 style={{ margin: '0 0 4px 0', fontSize: '14px' }}>E-BILL INVOICE</h4>
+                        <span style={{ color: 'var(--text-secondary)' }}>Invoice ID: {createdBooking.id}</span><br />
+                        <span style={{ color: 'var(--text-secondary)' }}>Date: {new Date(createdBooking.createdAt || Date.now()).toLocaleDateString()}</span>
+                      </div>
+                    </div>
 
-                  {/* Digital Signature */}
-                  {isSigned && (
-                    <div style={{ marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>Consent Status:</span><br />
-                          <span style={{ color: 'var(--accent-green)', fontWeight: 'bold', fontSize: '10px' }}>✓ E-SIGNATURE VERIFIED</span>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <span style={{ fontSize: '9px', color: 'var(--text-secondary)', display: 'block' }}>Signed Digitally By:</span>
-                          <strong style={{ fontFamily: 'Georgia, serif', fontSize: '14px', color: 'var(--accent-cyan)', fontStyle: 'italic' }}>
-                            {signatureName}
-                          </strong>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                      <div>
+                        <h4 style={{ textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '6px', fontSize: '11px' }}>Renter Information</h4>
+                        <strong>{sigName || 'Customer'}</strong><br />
+                        <span>Phone: {createdBooking.phone}</span><br />
+                        <span>Email: {createdBooking.email}</span><br />
+                        <span>Address: {createdBooking.address}</span>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <h4 style={{ textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '6px', fontSize: '11px' }}>Delivery Schedule</h4>
+                        <span>Slot: <strong>{createdBooking.deliverySlot}</strong></span><br />
+                        {createdBooking.items && createdBooking.items[0] && (
+                          <span>Rent Span: {createdBooking.items[0].startDate} to {createdBooking.items[0].endDate}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+                          <th style={{ textAlign: 'left', padding: '6px 0' }}>Rental Hardware Item</th>
+                          <th style={{ textAlign: 'center', padding: '6px 0' }}>Tenure Plan</th>
+                          <th style={{ textAlign: 'center', padding: '6px 0' }}>Dates</th>
+                          <th style={{ textAlign: 'right', padding: '6px 0' }}>Rate</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(createdBooking.items || []).map((item, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            <td style={{ padding: '10px 0' }}>
+                              <strong>{item.name} {item.quantity > 1 ? `(x${item.quantity})` : ''}</strong>
+                            </td>
+                            <td style={{ textAlign: 'center', padding: '10px 0' }}>{item.planLabel}</td>
+                            <td style={{ textAlign: 'center', padding: '10px 0' }}>{item.startDate} to {item.endDate}</td>
+                            <td style={{ textAlign: 'right', padding: '10px 0' }}>₹{((item.rate || 0) * (item.quantity || 1)).toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
+                      <div>
+                        <div style={{ color: 'var(--text-secondary)', fontStyle: 'italic', maxWidth: '280px', fontSize: '10px', lineHeight: '1.4' }}>
+                          * Zero Deposit rental terms. Renter agrees to keep equipment in clean, dry indoor condition. Liability for damage resides with renter.
                         </div>
                       </div>
-                      {signatureCanvasData && (
+                      <div style={{ minWidth: '180px', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0' }}>
+                          <span>Subtotal:</span>
+                          <span>₹{(createdBooking.totalAmount ? (createdBooking.totalAmount - 149 - (createdBooking.discountAmount || 0)) / 1.18 : 0).toFixed(2)}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0' }}>
+                          <span>GST Tax (18%):</span>
+                          <span>₹{(createdBooking.totalAmount ? ((createdBooking.totalAmount - 149 - (createdBooking.discountAmount || 0)) / 1.18) * 0.18 : 0).toFixed(2)}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0' }}>
+                          <span>Delivery Slot Fee:</span>
+                          <span>₹149.00</span>
+                        </div>
+                        {(createdBooking.discountAmount || 0) > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0', color: 'var(--accent-cyan)' }}>
+                            <span>Discounts:</span>
+                            <span>-₹{(createdBooking.discountAmount || 0).toFixed(2)}</span>
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0 0 0', borderTop: '1px solid var(--border)', paddingTop: '6px', fontWeight: 'bold', fontSize: '13px' }}>
+                          <span>Grand Total:</span>
+                          <span style={{ color: 'var(--accent-cyan)' }}>₹{(createdBooking.totalAmount || 0).toFixed(2)}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0', fontSize: '10px', color: 'var(--text-secondary)' }}>
+                          <span>Payment Status:</span>
+                          <span>{createdBooking.status === 'Cancelled' ? 'Refunded' : 'Paid Via ' + createdBooking.paymentMethod}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Verification Proofs Attachment */}
+                    {(selfieImg || idImg) && (
+                      <div style={{ marginTop: '24px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+                        <h4 style={{ textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '12px', fontSize: '11px', letterSpacing: '1px' }}>
+                          Security Verification Proofs
+                        </h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                          {selfieImg && (
+                            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
+                              <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 'bold' }}>
+                                LIVE VERIFICATION SELFIE
+                              </span>
+                              <img 
+                                src={selfieImg} 
+                                alt="Live Selfie" 
+                                style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '6px', border: '1px solid rgba(0, 229, 255, 0.2)', objectFit: 'contain' }} 
+                              />
+                            </div>
+                          )}
+                          {idImg && (
+                            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
+                              <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 'bold' }}>
+                                IDENTITY PROOF DOCUMENT
+                              </span>
+                              <img 
+                                src={idImg} 
+                                alt="ID Document" 
+                                style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '6px', border: '1px solid rgba(0, 229, 255, 0.2)', objectFit: 'contain' }} 
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Accepted Terms Agreement */}
+                    <div style={{ marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+                      <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '6px' }}>
+                        ACCEPTED TERMS & CONDITIONS
+                      </span>
+                      <ul style={{ paddingLeft: '14px', margin: 0, fontSize: '10px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                        {RENTAL_TERMS.slice(0, 5).map((term, i) => (
+                          <li key={i}>{term}</li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Digital Signature */}
+                    {sigImg && (
+                      <div style={{ marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>Consent Status:</span><br />
+                            <span style={{ color: 'var(--accent-green)', fontWeight: 'bold', fontSize: '10px' }}>✓ E-SIGNATURE VERIFIED</span>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{ fontSize: '9px', color: 'var(--text-secondary)', display: 'block' }}>Signed Digitally By:</span>
+                            <strong style={{ fontFamily: 'Georgia, serif', fontSize: '14px', color: 'var(--accent-cyan)', fontStyle: 'italic' }}>
+                              {sigName}
+                            </strong>
+                          </div>
+                        </div>
                         <div style={{ marginTop: '8px', border: '1px dashed rgba(0,229,255,0.3)', borderRadius: '6px', background: 'rgba(0,229,255,0.02)', padding: '6px', textAlign: 'center' }}>
                           <span style={{ fontSize: '9px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>HAND-DRAWN SIGNATURE</span>
-                          <img src={signatureCanvasData} alt="Digital Signature" style={{ maxHeight: '60px', filter: 'brightness(1.2)' }} />
+                          <img src={sigImg} alt="Digital Signature" style={{ maxHeight: '60px', filter: 'brightness(1.2)' }} />
                         </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                      </div>
+                    )}
+                  </div>
 
-                <div style={{ marginTop: '24px', display: 'flex', gap: '12px', justifyContent: 'center' }} className="no-print">
-                  {createdBooking.status !== 'Cancelled' && (
-                    <>
-                      <button className="btn-signin" onClick={handleDownloadReceipt} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        📥 Download PDF Receipt
-                      </button>
-                      <button className="btn-clipboard" onClick={() => window.print()}>
-                        Print Receipt
-                      </button>
-                      <a 
-                        href={`https://wa.me/918180807208?text=Hello%20Elite%20PS%20Rentals!%20I%20just%20placed%20a%20booking.%0ABooking%20ID%3A%20${createdBooking.id}%0ADevices%3A%20${encodeURIComponent((createdBooking.items || []).map(item => `${item.name} (${item.planLabel})`).join(', '))}%0APlease%20confirm%20delivery.`}
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="btn-signin"
-                        style={{ background: '#25D366', color: '#fff', boxShadow: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}
-                      >
-                        Confirm on WhatsApp
-                      </a>
-                    </>
-                  )}
-                  <button className="btn-clipboard" onClick={() => { setCart([]); setView('home'); }}>
-                    Back to Catalog
-                  </button>
+                  <div style={{ marginTop: '24px', display: 'flex', gap: '12px', justifyContent: 'center' }} className="no-print">
+                    {isApproved ? (
+                      <>
+                        <button className="btn-signin" onClick={handleDownloadReceipt} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          📥 Download PDF Receipt
+                        </button>
+                        <button className="btn-clipboard" onClick={() => window.print()}>
+                          Print Receipt
+                        </button>
+                        <a 
+                          href={`https://wa.me/918180807208?text=Hello%20Elite%20PS%20Rentals!%20My%20booking%20has%20been%20approved.%0ABooking%20ID%3A%20${createdBooking.id}%0APlease%20confirm%20delivery.`}
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="btn-signin"
+                          style={{ background: '#25D366', color: '#fff', boxShadow: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}
+                        >
+                          Confirm on WhatsApp
+                        </a>
+                      </>
+                    ) : isPending ? (
+                      <div style={{ color: 'var(--accent-cyan)', fontWeight: 'bold', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        ⏳ Document Verification Pending (Download Available Post-Approval)
+                      </div>
+                    ) : (
+                      <div style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '13px' }}>
+                        ❌ Verification Rejected (Order Cancelled)
+                      </div>
+                    )}
+                    <button className="btn-clipboard" onClick={() => { setCart([]); setView('home'); }}>
+                      Back to Catalog
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* Right Column Checkout Recap */}
@@ -4412,6 +4346,12 @@ export default function App() {
                       onClick={() => setAdminTab('verification-logs')}
                     >
                       Verification Logs ({adminVerificationLogs.length})
+                    </button>
+                    <button 
+                      className={`tab-btn ${adminTab === 'verifications' ? 'active' : ''}`}
+                      onClick={() => setAdminTab('verifications')}
+                    >
+                      Pending Verifications ({adminBookings.filter(b => b.verificationStatus === 'Pending').length})
                     </button>
                   </div>
 
@@ -5179,6 +5119,113 @@ export default function App() {
                   )}
                 </div>
               )}
+              {adminTab === 'verifications' && (() => {
+                const pendingBookings = adminBookings.filter(b => b.verificationStatus === 'Pending');
+                return (
+                  <div className="glass-panel">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 'bold', margin: 0 }}>
+                        Manual Document Verifications
+                      </h3>
+                      <button className="btn-clipboard" onClick={fetchAdminData} style={{ fontSize: '12px', margin: 0 }}>
+                        Refresh
+                      </button>
+                    </div>
+
+                    {pendingBookings.length === 0 ? (
+                      <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                        🎉 No bookings are currently pending verification!
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        {pendingBookings.map((b) => (
+                          <div key={b.id} className="glass-panel" style={{ padding: '20px', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '16px' }}>
+                              <div>
+                                <span style={{ fontSize: '11px', color: 'var(--accent-cyan)', fontWeight: 'bold', textTransform: 'uppercase', display: 'block' }}>Booking Reference</span>
+                                <strong style={{ fontSize: '15px' }}>{b.id}</strong>
+                                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '10px' }}>Placed on: {new Date(b.createdAt).toLocaleString()}</span>
+                              </div>
+                              <div style={{ textAlign: 'right' }}>
+                                <span style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block' }}>UPI Transaction ID</span>
+                                <strong style={{ fontSize: '14px', color: 'var(--accent-cyan)' }}>{b.paymentDetails?.transactionId || 'N/A'}</strong>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '20px', marginBottom: '16px' }}>
+                              <div>
+                                <h4 style={{ fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px' }}>Renter Details</h4>
+                                <div style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                  <div><strong>Name:</strong> {b.customerName}</div>
+                                  <div><strong>Phone:</strong> {b.phone}</div>
+                                  <div><strong>Email:</strong> {b.email}</div>
+                                  <div><strong>Address:</strong> {b.address}</div>
+                                  <div><strong>Total Amount:</strong> ₹{b.totalAmount.toFixed(2)}</div>
+                                </div>
+                                <div style={{ marginTop: '12px' }}>
+                                  <strong>Items:</strong>
+                                  <ul style={{ margin: '4px 0', paddingLeft: '16px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                    {b.items.map((item, i) => (
+                                      <li key={i}>{item.name} ({item.quantity}x) - {item.planLabel}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              </div>
+
+                              <div>
+                                <h4 style={{ fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px' }}>Verification Documents</h4>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                                  <div style={{ textAlign: 'center' }}>
+                                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>CUSTOMER SELFIE</span>
+                                    {b.selfie ? (
+                                      <img src={b.selfie} alt="Selfie" style={{ maxWidth: '100%', maxHeight: '130px', borderRadius: '6px', border: '1px solid var(--border)', objectFit: 'contain' }} />
+                                    ) : (
+                                      <div style={{ height: '130px', background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: '1px dashed var(--border)', fontSize: '11px', color: 'var(--text-muted)' }}>No Selfie</div>
+                                    )}
+                                  </div>
+                                  <div style={{ textAlign: 'center' }}>
+                                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>ID DOCUMENT</span>
+                                    {b.identityID ? (
+                                      <img src={b.identityID} alt="ID Document" style={{ maxWidth: '100%', maxHeight: '130px', borderRadius: '6px', border: '1px solid var(--border)', objectFit: 'contain' }} />
+                                    ) : (
+                                      <div style={{ height: '130px', background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: '1px dashed var(--border)', fontSize: '11px', color: 'var(--text-muted)' }}>No ID Proof</div>
+                                    )}
+                                  </div>
+                                  <div style={{ textAlign: 'center' }}>
+                                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>E-SIGNATURE</span>
+                                    {b.signature ? (
+                                      <img src={b.signature} alt="Signature" style={{ maxWidth: '100%', maxHeight: '130px', borderRadius: '6px', border: '1px solid var(--border)', objectFit: 'contain', background: 'rgba(255,255,255,0.05)' }} />
+                                    ) : (
+                                      <div style={{ height: '130px', background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: '1px dashed var(--border)', fontSize: '11px', color: 'var(--text-muted)' }}>No Signature</div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+                              <button 
+                                className="btn-rent-now" 
+                                style={{ width: 'auto', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.2)' }}
+                                onClick={() => handleVerifyDocuments(b.id, 'Rejected')}
+                              >
+                                Reject Documents
+                              </button>
+                              <button 
+                                className="btn-rent-now" 
+                                style={{ width: 'auto' }}
+                                onClick={() => handleVerifyDocuments(b.id, 'Approved')}
+                              >
+                                Approve Documents & Confirm
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </>
           )}
         </div>
@@ -5806,9 +5853,22 @@ export default function App() {
 
                             {/* Footer */}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', borderTop: '1px solid var(--border)' }}>
-                              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                {b.paymentDetails?.transactionId ? `Txn: ${b.paymentDetails.transactionId}` : 'Payment Confirmed'}
-                              </span>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                  {b.paymentDetails?.transactionId ? `Txn: ${b.paymentDetails.transactionId}` : 'Payment Confirmed'}
+                                </span>
+                                <button
+                                  className="btn-clipboard"
+                                  style={{ margin: 0, padding: '4px 10px', fontSize: '11px', width: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                  onClick={() => {
+                                    setCreatedBooking(b);
+                                    setCheckoutStep(4);
+                                    setView('checkout');
+                                  }}
+                                >
+                                  📄 View Receipt
+                                </button>
+                              </div>
                               <span style={{ fontWeight: 'bold', color: 'var(--accent-cyan)', fontSize: '15px' }}>₹{b.totalAmount.toFixed(2)}</span>
                             </div>
                           </div>

@@ -24,8 +24,8 @@ app.use(cors({
   credentials: true
 }));
 app.use(morgan('dev'));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
 // Default static images folder
 app.use('/images', express.static(path.join(__dirname, 'data/images')));
@@ -1048,6 +1048,68 @@ app.patch('/api/bookings/:id/status', (req, res) => {
       booking.email,
       `Rental Order Completed - ${booking.id}`,
       `Hi ${booking.customerName},\n\nYour rental period for Booking ${booking.id} is now complete and all items have been successfully returned. We hope you had a great experience!`,
+      booking.userId
+    );
+  }
+
+  db.saveBookings(bookings);
+  res.json({ success: true, booking });
+});
+
+// 6b. Verify booking documents (Admin only)
+app.patch('/api/bookings/:id/verify', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer elite-admin-token-')) {
+    return res.status(401).json({ success: false, message: 'Unauthorized admin access' });
+  }
+  const { verificationStatus } = req.body; // 'Approved' or 'Rejected'
+  const bookings = db.getBookings();
+  const bookingIndex = bookings.findIndex(b => b.id === req.params.id);
+
+  if (bookingIndex === -1) {
+    return res.status(404).json({ message: 'Booking not found' });
+  }
+
+  const booking = bookings[bookingIndex];
+  booking.verificationStatus = verificationStatus;
+
+  if (verificationStatus === 'Approved') {
+    booking.status = 'Confirmed';
+    sendMockEmail(
+      booking.email,
+      `Booking Confirmed - ${booking.id}`,
+      `Hi ${booking.customerName},\n\nWe are pleased to inform you that your booking ${booking.id} has been confirmed. Your gaming setup will be delivered as per the selected slot:\n\nDelivery Slot: ${booking.deliverySlot}\n\nHappy Gaming!`,
+      booking.userId
+    );
+    sendMockEmail(
+      booking.email,
+      `Rental Agreement Approved - ${booking.id}`,
+      `Hi ${booking.customerName},\n\nYour signed rental agreement for Booking ${booking.id} has been verified and approved by the Elite PS Rentals compliance team.`,
+      booking.userId
+    );
+  } else if (verificationStatus === 'Rejected') {
+    booking.status = 'Cancelled';
+    
+    // If order was cancelled/refunded, return stock
+    const products = db.getProducts();
+    for (const item of booking.items) {
+      const dbProduct = products.find(p => p.id === item.id);
+      if (dbProduct) {
+        dbProduct.stock += item.quantity;
+      }
+    }
+    db.saveProducts(products);
+    
+    sendMockEmail(
+      booking.email,
+      `Booking Cancelled - ${booking.id}`,
+      `Hi ${booking.customerName},\n\nYour booking ${booking.id} has been cancelled. If any payment was made, a refund will be processed shortly.`,
+      booking.userId
+    );
+    sendMockEmail(
+      booking.email,
+      `Rental Agreement Rejected - ${booking.id}`,
+      `Hi ${booking.customerName},\n\nYour rental agreement for Booking ${booking.id} has been rejected.`,
       booking.userId
     );
   }
