@@ -993,7 +993,7 @@ app.patch('/api/bookings/:id/status', (req, res) => {
   // Update fields based on status
   booking.status = status;
 
-  if (status === 'Confirmed') {
+  if (status === 'Confirmed' || status === 'Approved') {
     booking.verificationStatus = 'Approved';
     sendMockEmail(
       booking.email,

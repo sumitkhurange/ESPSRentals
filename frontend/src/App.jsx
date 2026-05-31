@@ -444,6 +444,28 @@ export default function App() {
     }
   };
 
+  const refreshBookingStatus = async (bookingId) => {
+    if (!userToken) return;
+    try {
+      const res = await fetch(`${API}/api/my-bookings`, {
+        headers: {
+          'Authorization': `Bearer ${userToken}`
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUserBookings(data);
+        const updated = data.find(b => b.id === bookingId);
+        if (updated) {
+          setCreatedBooking(updated);
+          showToast('Booking status refreshed successfully!');
+        }
+      }
+    } catch (err) {
+      console.error('Error refreshing booking status:', err);
+    }
+  };
+
   const fetchMyEmails = async (token) => {
     try {
       const res = await fetch(`${API}/api/my-emails`, {
@@ -638,6 +660,13 @@ export default function App() {
       fetchMyEmails(userToken);
     }
   }, [isUserLoggedIn, userToken]);
+
+  // Refetch bookings when entering client dashboard to prevent stale data
+  useEffect(() => {
+    if (view === 'client-dashboard' && isUserLoggedIn && userToken) {
+      fetchUserBookings(userToken);
+    }
+  }, [view, isUserLoggedIn, userToken]);
 
   const handleUserLogin = async (e) => {
     e.preventDefault();
@@ -4153,8 +4182,17 @@ export default function App() {
                         </a>
                       </>
                     ) : isPending ? (
-                      <div style={{ color: 'var(--accent-cyan)', fontWeight: 'bold', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        ⏳ Document Verification Pending (Download Available Post-Approval)
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <div style={{ color: 'var(--accent-cyan)', fontWeight: 'bold', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          ⏳ Document Verification Pending
+                        </div>
+                        <button 
+                          className="btn-rent-now" 
+                          style={{ width: 'auto', padding: '6px 12px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px', margin: 0 }}
+                          onClick={() => refreshBookingStatus(createdBooking.id)}
+                        >
+                          🔄 Refresh Status
+                        </button>
                       </div>
                     ) : (
                       <div style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '13px' }}>
