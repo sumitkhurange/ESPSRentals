@@ -7,8 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
-        changeOrigin: true,
+        target: 'https://espsrentals-backend.onrender.com',        changeOrigin: true,
         secure: false,
       }
     }
