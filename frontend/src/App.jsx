@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, MapPin, ShoppingCart, User, Star, Play, Copy, Plus, Minus, 
   ChevronRight, ChevronDown, ChevronUp, Check, FileText, Upload, 
@@ -9,6 +9,9 @@ import {
 import { auth, RecaptchaVerifier, signInWithPhoneNumber, isFirebaseConfigured, sendPhoneOTP, verifyPhoneOTP, googleLogin } from './firebase';
 
 export default function App() {
+  // API base URL - points to Render backend in production
+  const API = import.meta.env.VITE_API_BASE_URL || '';
+
   // Page States: 'home', 'details', 'checkout', 'admin'
   const [view, setView] = useState('home');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -427,7 +430,7 @@ export default function App() {
 
   const fetchUserBookings = async (token) => {
     try {
-      const res = await fetch('/api/my-bookings', {
+      const res = await fetch(`${API}/api/my-bookings`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -443,7 +446,7 @@ export default function App() {
 
   const fetchMyEmails = async (token) => {
     try {
-      const res = await fetch('/api/my-emails', {
+      const res = await fetch(`${API}/api/my-emails`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -458,7 +461,7 @@ export default function App() {
   const fetchAdminCoupons = async () => {
     try {
       const token = localStorage.getItem('eliteAdminToken');
-      const res = await fetch('/api/coupons', {
+      const res = await fetch(`${API}/api/coupons`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -473,7 +476,7 @@ export default function App() {
   const fetchAdminEmails = async () => {
     try {
       const token = localStorage.getItem('eliteAdminToken');
-      const res = await fetch('/api/emails', {
+      const res = await fetch(`${API}/api/emails`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -488,7 +491,7 @@ export default function App() {
   const fetchAdminVerificationLogs = async () => {
     try {
       const token = localStorage.getItem('eliteAdminToken');
-      const res = await fetch('/api/admin/verification-logs', {
+      const res = await fetch(`${API}/api/admin/verification-logs`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -506,7 +509,7 @@ export default function App() {
       return;
     }
     try {
-      const res = await fetch('/api/coupons/apply', {
+      const res = await fetch(`${API}/api/coupons/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: couponCodeInput, email: customerEmail || userProfile?.email || 'customer@elite.com' })
@@ -532,7 +535,7 @@ export default function App() {
       return;
     }
     try {
-      const res = await fetch('/api/auth/forgot-password', {
+      const res = await fetch(`${API}/api/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail })
@@ -562,7 +565,7 @@ export default function App() {
       return;
     }
     try {
-      const res = await fetch('/api/auth/reset-password', {
+      const res = await fetch(`${API}/api/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: forgotCode, password: forgotPassword })
@@ -589,7 +592,7 @@ export default function App() {
     e.preventDefault();
     try {
       const token = localStorage.getItem('eliteAdminToken');
-      const res = await fetch('/api/coupons', {
+      const res = await fetch(`${API}/api/coupons`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -614,7 +617,7 @@ export default function App() {
     if (!confirm(`Are you sure you want to delete coupon ${code}?`)) return;
     try {
       const token = localStorage.getItem('eliteAdminToken');
-      const res = await fetch(`/api/coupons/${code}`, {
+      const res = await fetch(`${API}/api/coupons/${code}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -639,7 +642,7 @@ export default function App() {
   const handleUserLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch(`${API}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: loginEmail, password: loginPassword })
@@ -697,7 +700,7 @@ export default function App() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/auth/signup', {
+      const res = await fetch(`${API}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: signupName, email: signupEmail, password: signupPassword, phone: signupPhone })
@@ -765,7 +768,7 @@ export default function App() {
     }
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/auth/verify-email-otp', {
+      const res = await fetch(`${API}/api/auth/verify-email-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ signupSessionId, otp })
@@ -819,7 +822,7 @@ export default function App() {
         // Verify code using Firebase
         const result = await firebaseConfirmationResult.confirm(otp);
         // If successful, tell our backend to complete signup (bypassing backend Twilio verification)
-        const res = await fetch('/api/auth/verify-mobile-otp', {
+        const res = await fetch(`${API}/api/auth/verify-mobile-otp`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ signupSessionId, otp: 'FIREBASE_VERIFIED' })
@@ -838,7 +841,7 @@ export default function App() {
         }
       } else {
         // Fallback to normal backend verification (dev mode / Twilio)
-        const res = await fetch('/api/auth/verify-mobile-otp', {
+        const res = await fetch(`${API}/api/auth/verify-mobile-otp`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ signupSessionId, otp })
@@ -871,7 +874,7 @@ export default function App() {
     }
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/auth/resend-email-otp', {
+      const res = await fetch(`${API}/api/auth/resend-email-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ signupSessionId })
@@ -906,7 +909,7 @@ export default function App() {
           setTimer(300);
         }
       } else {
-        const res = await fetch('/api/auth/resend-mobile-otp', {
+        const res = await fetch(`${API}/api/auth/resend-mobile-otp`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ signupSessionId })
@@ -955,7 +958,7 @@ export default function App() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/auth/update-profile', {
+      const res = await fetch(`${API}/api/auth/update-profile`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -996,7 +999,7 @@ export default function App() {
     }
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/auth/change-password', {
+      const res = await fetch(`${API}/api/auth/change-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1406,7 +1409,7 @@ export default function App() {
   const fetchAdminData = async () => {
     try {
       const token = localStorage.getItem('eliteAdminToken');
-      const res = await fetch('/api/bookings', {
+      const res = await fetch(`${API}/api/bookings`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -1638,7 +1641,7 @@ export default function App() {
   // Auto apply coupon suggestions helper
   const autoApplyCouponCode = async (code) => {
     try {
-      const res = await fetch('/api/coupons/apply', {
+      const res = await fetch(`${API}/api/coupons/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: code, email: customerEmail || userProfile?.email || 'customer@elite.com' })
@@ -1795,7 +1798,7 @@ export default function App() {
         headers['Authorization'] = `Bearer ${userToken}`;
       }
 
-      const res = await fetch('/api/bookings', {
+      const res = await fetch(`${API}/api/bookings`, {
         method: 'POST',
         headers: headers,
         body: JSON.stringify(orderBody)
@@ -1967,7 +1970,7 @@ export default function App() {
   const handleAdminLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch(`${API}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: adminUsername, password: adminPassword })
@@ -1990,7 +1993,7 @@ export default function App() {
   const handleUpdateBookingStatus = async (id, newStatus) => {
     try {
       const token = localStorage.getItem('eliteAdminToken');
-      const res = await fetch(`/api/bookings/${id}/status`, {
+      const res = await fetch(`${API}/api/bookings/${id}/status`, {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
@@ -2014,7 +2017,7 @@ export default function App() {
     if (!confirm('Are you sure you want to remove this product?')) return;
     try {
       const token = localStorage.getItem('eliteAdminToken');
-      const res = await fetch(`/api/products/${id}`, {
+      const res = await fetch(`${API}/api/products/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -2062,7 +2065,7 @@ export default function App() {
       const token = localStorage.getItem('eliteAdminToken');
       let res;
       if (editingProduct) {
-        res = await fetch(`/api/products/${editingProduct.id.trim()}`, {
+        res = await fetch(`${API}/api/products/${editingProduct.id.trim()}`, {
           method: 'PUT',
           headers: { 
             'Content-Type': 'application/json',
@@ -2071,7 +2074,7 @@ export default function App() {
           body: JSON.stringify(body)
         });
       } else {
-        res = await fetch('/api/products', {
+        res = await fetch(`${API}/api/products`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -2165,7 +2168,7 @@ export default function App() {
     if (result.success) {
       console.log(result.user);
       try {
-        const res = await fetch('/api/auth/google', {
+        const res = await fetch(`${API}/api/auth/google`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -4243,7 +4246,7 @@ export default function App() {
                             onClick={() => {
                               setCouponCodeInput(c.code);
                               setTimeout(() => {
-                                fetch('/api/coupons/apply', {
+                                fetch(`${API}/api/coupons/apply`, {
                                   method: 'POST',
                                   headers: { 'Content-Type': 'application/json' },
                                   body: JSON.stringify({ code: c.code, email: customerEmail || userProfile?.email || 'guest@elite.com' })
@@ -6290,7 +6293,7 @@ export default function App() {
                                   if (!inlineForgotPhone.trim()) { showToast('Please enter your phone number.', 'error'); return; }
                                   setIsSubmitting(true);
                                   try {
-                                    const res = await fetch('/api/auth/forgot-password-phone', {
+                                    const res = await fetch(`${API}/api/auth/forgot-password-phone`, {
                                       method: 'POST',
                                       headers: { 'Content-Type': 'application/json' },
                                       body: JSON.stringify({ phone: inlineForgotPhone.trim() })
@@ -6387,7 +6390,7 @@ export default function App() {
                                   if (inlineForgotNewPass.length < 6) { showToast('Password must be at least 6 characters.', 'error'); return; }
                                   setIsSubmitting(true);
                                   try {
-                                    const res = await fetch('/api/auth/reset-password', {
+                                    const res = await fetch(`${API}/api/auth/reset-password`, {
                                       method: 'POST',
                                       headers: { 'Content-Type': 'application/json' },
                                       body: JSON.stringify({ token: inlineForgotResetToken, password: inlineForgotNewPass })

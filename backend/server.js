@@ -12,7 +12,17 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: [
+    'https://psrentals-abb93.web.app',
+    'https://psrentals-abb93.firebaseapp.com',
+    'http://localhost:5173',
+    'http://localhost:3000'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 app.use(morgan('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -1250,7 +1260,7 @@ app.get('/api/my-emails', (req, res) => {
 });
 
 // Admin Verification Logs API
-app.get('/api/verification-logs', (req, res) => {
+app.get('/api/admin/verification-logs', (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer elite-admin-token-')) {
     return res.status(401).json({ success: false, message: 'Unauthorized admin access' });
