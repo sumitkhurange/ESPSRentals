@@ -2957,33 +2957,6 @@ export default function App() {
             </button>
           </div>
 
-          {/* TRUST BUILDING SECTION */}
-          <div className="section-header" style={{ marginTop: '60px' }}>
-            <h2 className="section-title">Why <span>Choose Us</span></h2>
-            <p className="section-subtitle">Premium equipment matching your gaming session needs</p>
-          </div>
-          <div className="trust-grid" style={{ marginBottom: '60px' }}>
-            <div className="glass-panel trust-card">
-              <div className="trust-icon-box">🎮</div>
-              <h3 className="trust-card-title">Premium Gaming Consoles</h3>
-              <p className="trust-card-desc">Latest PS5 & VR2 systems with premium controllers and accessories.</p>
-            </div>
-            <div className="glass-panel trust-card">
-              <div className="trust-icon-box">🚚</div>
-              <h3 className="trust-card-title">Fast Delivery</h3>
-              <p className="trust-card-desc">Quick doorstep delivery and professional setup within 2-4 hours.</p>
-            </div>
-            <div className="glass-panel trust-card">
-              <div className="trust-icon-box">💯</div>
-              <h3 className="trust-card-title">Sanitized Equipment</h3>
-              <p className="trust-card-desc">Every console and controller is thoroughly sanitized before delivery.</p>
-            </div>
-            <div className="glass-panel trust-card">
-              <div className="trust-icon-box">🔒</div>
-              <h3 className="trust-card-title">Secure Booking</h3>
-              <p className="trust-card-desc">Zero security deposit, secure payment verification, and transparent terms.</p>
-            </div>
-          </div>
 
           {/* CUSTOMER REVIEWS SECTION */}
           <div className="section-header" style={{ marginTop: '60px' }}>
