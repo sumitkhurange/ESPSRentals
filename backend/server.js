@@ -1143,7 +1143,7 @@ app.post('/api/products', (req, res) => {
 
   // Set default placeholders if empty
   newProduct.image = newProduct.image || '/images/default.png';
-  newProduct.rating = parseFloat(newProduct.rating) || 5.0;
+  newProduct.rating = parseFloat(newProduct.rating) || 0.0;
   newProduct.bookedCount = 0;
   newProduct.stock = parseInt(newProduct.stock) || 1;
 

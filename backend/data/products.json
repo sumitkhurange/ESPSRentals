@@ -4,7 +4,7 @@
     "name": "PlayStation 5 Console (Standard Edition)",
     "category": "PS5",
     "image": "/images/ps5.png",
-    "rating": 4.9,
+    "rating": 0,
     "brand": "Sony Interactive Entertainment",
     "pricePlans": [
       {
@@ -72,7 +72,7 @@
     "name": "PlayStation 4 Pro (1TB Console Bundle)",
     "category": "PS5",
     "image": "/images/ps4.png",
-    "rating": 4.7,
+    "rating": 0,
     "brand": "Sony",
     "pricePlans": [
       {
@@ -135,7 +135,7 @@
     "name": "Logitech G29 Driving Force Steering Wheel & Pedals",
     "category": "Steering",
     "image": "/images/g29.png",
-    "rating": 4.8,
+    "rating": 0,
     "brand": "Logitech G",
     "pricePlans": [
       {
@@ -198,7 +198,7 @@
     "name": "PlayStation VR2 Headset & Controllers",
     "category": "VR",
     "image": "/images/vr2.png",
-    "rating": 4.9,
+    "rating": 0,
     "brand": "Sony",
     "pricePlans": [
       {
@@ -265,7 +265,7 @@
     "name": "Sony DualSense Edge Wireless Controller",
     "category": "Controllers",
     "image": "/images/edge_controller.png",
-    "rating": 4.6,
+    "rating": 0,
     "brand": "Sony",
     "pricePlans": [
       {
@@ -329,7 +329,7 @@
     "name": "EA Sports FC 25 (PS5 Standard Edition)",
     "category": "PS5",
     "image": "/images/fc25.png",
-    "rating": 4.8,
+    "rating": 0,
     "brand": "EA Sports",
     "pricePlans": [
       {
@@ -390,7 +390,7 @@
     "name": "Marvel's Spider-Man 2 (PS5 Standard Edition)",
     "category": "PS5",
     "image": "/images/spiderman2.png",
-    "rating": 4.9,
+    "rating": 0,
     "brand": "PlayStation Studios",
     "pricePlans": [
       {
@@ -451,7 +451,7 @@
     "name": "BenQ TK700 4K HDR Gaming Projector",
     "category": "VR",
     "image": "/images/projector.png",
-    "rating": 4.9,
+    "rating": 0,
     "brand": "BenQ",
     "pricePlans": [
       {

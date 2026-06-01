@@ -8,6 +8,12 @@ import {
 } from 'lucide-react';
 import { auth, RecaptchaVerifier, signInWithPhoneNumber, isFirebaseConfigured, sendPhoneOTP, verifyPhoneOTP, googleLogin } from './firebase';
 
+const getAvgRating = (reviewsList) => {
+  if (!reviewsList || reviewsList.length === 0) return 0;
+  const sum = reviewsList.reduce((acc, r) => acc + r.rating, 0);
+  return (sum / reviewsList.length).toFixed(1);
+};
+
 export default function App() {
   // API base URL - points to Render backend in production
   const API = import.meta.env.VITE_API_BASE_URL || '';
@@ -426,12 +432,6 @@ export default function App() {
     }
     fetchReviews();
   }, []);
-
-  const getAvgRating = (reviewsList) => {
-    if (!reviewsList || reviewsList.length === 0) return 0;
-    const sum = reviewsList.reduce((acc, r) => acc + r.rating, 0);
-    return (sum / reviewsList.length).toFixed(1);
-  };
 
   const fetchReviews = async () => {
     setReviewsLoading(true);
@@ -2956,6 +2956,253 @@ export default function App() {
               Browse Equipment Catalog
             </button>
           </div>
+
+          {/* TRUST BUILDING SECTION */}
+          <div className="section-header" style={{ marginTop: '60px' }}>
+            <h2 className="section-title">Why <span>Choose Us</span></h2>
+            <p className="section-subtitle">Premium equipment matching your gaming session needs</p>
+          </div>
+          <div className="trust-grid" style={{ marginBottom: '60px' }}>
+            <div className="glass-panel trust-card">
+              <div className="trust-icon-box">🎮</div>
+              <h3 className="trust-card-title">Premium Gaming Consoles</h3>
+              <p className="trust-card-desc">Latest PS5 & VR2 systems with premium controllers and accessories.</p>
+            </div>
+            <div className="glass-panel trust-card">
+              <div className="trust-icon-box">🚚</div>
+              <h3 className="trust-card-title">Fast Delivery</h3>
+              <p className="trust-card-desc">Quick doorstep delivery and professional setup within 2-4 hours.</p>
+            </div>
+            <div className="glass-panel trust-card">
+              <div className="trust-icon-box">💯</div>
+              <h3 className="trust-card-title">Sanitized Equipment</h3>
+              <p className="trust-card-desc">Every console and controller is thoroughly sanitized before delivery.</p>
+            </div>
+            <div className="glass-panel trust-card">
+              <div className="trust-icon-box">🔒</div>
+              <h3 className="trust-card-title">Secure Booking</h3>
+              <p className="trust-card-desc">Zero security deposit, secure payment verification, and transparent terms.</p>
+            </div>
+          </div>
+
+          {/* CUSTOMER REVIEWS SECTION */}
+          <div className="section-header" style={{ marginTop: '60px' }}>
+            <h2 className="section-title">Customer <span>Reviews</span></h2>
+            <p className="section-subtitle">What gamers say about our premium setups and support</p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '32% 65%', gap: '3%', marginBottom: '60px', alignItems: 'start' }} className="reviews-homepage-layout">
+            {/* Left side: Rating Summary & Form */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div className="glass-panel" style={{ padding: '24px', textAlign: 'center' }}>
+                <h4 style={{ fontSize: '15px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Overall Score</h4>
+                <div style={{ fontSize: '48px', fontWeight: '800', color: '#fff', lineHeight: 1, fontFamily: 'var(--font-display)', marginBottom: '8px' }}>
+                  {reviews.length > 0 ? getAvgRating(reviews) : '0.0'}
+                </div>
+                <div style={{ marginBottom: '8px' }}>
+                  {renderStars(reviews.length > 0 ? Math.round(getAvgRating(reviews)) : 0)}
+                </div>
+                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                  Based on {reviews.length} customer ratings
+                </span>
+              </div>
+
+              {/* Form */}
+              <div className="glass-panel" style={{ padding: '24px' }}>
+                <h4 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--accent-cyan)', marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+                  Share Your Experience
+                </h4>
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  handleReviewSubmit(formProduct || 'general');
+                }} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', fontWeight: 'bold' }}>Rating</label>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          type="button"
+                          key={star}
+                          onClick={() => setFormRating(star)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                        >
+                          <Star
+                            size={20}
+                            fill={star <= formRating ? 'var(--accent-cyan)' : 'none'}
+                            color="var(--accent-cyan)"
+                            strokeWidth={1.5}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="date-input-wrapper">
+                    <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', fontWeight: 'bold' }}>Your Name</label>
+                    <input
+                      type="text"
+                      placeholder="Enter your name"
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      style={{ width: '100%' }}
+                      required
+                    />
+                  </div>
+
+                  <div className="date-input-wrapper">
+                    <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', fontWeight: 'bold' }}>Product Rented</label>
+                    <select
+                      value={formProduct}
+                      onChange={(e) => setFormProduct(e.target.value)}
+                      style={{
+                        width: '100%',
+                        background: 'var(--bg-darker)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        padding: '10px 12px',
+                        color: '#fff',
+                        fontSize: '13.5px',
+                        outline: 'none'
+                      }}
+                    >
+                      <option value="general">General Site Experience</option>
+                      {products.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="date-input-wrapper">
+                    <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', fontWeight: 'bold' }}>Review</label>
+                    <textarea
+                      placeholder="Write your comments here..."
+                      value={formComment}
+                      onChange={(e) => setFormComment(e.target.value)}
+                      rows={3}
+                      style={{
+                        width: '100%',
+                        background: 'var(--bg-darker)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        padding: '10px 12px',
+                        color: '#fff',
+                        fontSize: '13.5px',
+                        resize: 'none',
+                        fontFamily: 'inherit'
+                      }}
+                      required
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="btn-signin"
+                    disabled={isSubmittingForm}
+                    style={{ width: '100%', padding: '12px', fontSize: '13.5px', margin: 0 }}
+                  >
+                    {isSubmittingForm ? 'Submitting...' : 'Submit Review'}
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {/* Right side: Reviews Grid & Filters */}
+            <div>
+              {/* Rating Star Filters */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }} className="review-filters-row">
+                {['All', 5, 4, 3, 2, 1].map((star) => (
+                  <button
+                    key={star}
+                    className={`btn-clipboard ${activeReviewRatingFilter === star ? 'active' : ''}`}
+                    onClick={() => setActiveReviewRatingFilter(star)}
+                    style={{
+                      margin: 0,
+                      padding: '6px 14px',
+                      fontSize: '12px',
+                      borderRadius: '20px',
+                      borderColor: activeReviewRatingFilter === star ? 'var(--accent-cyan)' : 'var(--border)',
+                      background: activeReviewRatingFilter === star ? '#00e5ff0a' : 'transparent',
+                      color: activeReviewRatingFilter === star ? 'var(--accent-cyan)' : 'var(--text-secondary)'
+                    }}
+                  >
+                    {star === 'All' ? 'All Reviews' : `${star} ★`}
+                  </button>
+                ))}
+              </div>
+
+              {/* Grid of review cards */}
+              {reviewsLoading ? (
+                <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>Loading reviews...</div>
+              ) : reviews.filter(r => activeReviewRatingFilter === 'All' || r.rating === activeReviewRatingFilter).length === 0 ? (
+                <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  No reviews match this rating filter.
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+                  {reviews
+                    .filter(r => activeReviewRatingFilter === 'All' || r.rating === activeReviewRatingFilter)
+                    .map((rev) => {
+                      const firstChar = rev.customerName ? rev.customerName.charAt(0).toUpperCase() : '?';
+                      return (
+                        <div 
+                          key={rev.id} 
+                          className="glass-panel review-card-item"
+                          style={{
+                            padding: '20px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between',
+                            border: rev.featured ? '1px solid var(--accent-cyan)' : '1px solid var(--border)',
+                            boxShadow: rev.featured ? '0 0 10px rgba(0, 229, 255, 0.1)' : 'none'
+                          }}
+                        >
+                          <div>
+                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
+                              <div style={{
+                                width: '36px',
+                                height: '36px',
+                                borderRadius: '50%',
+                                background: 'linear-gradient(135deg, var(--accent-blue), var(--accent-cyan))',
+                                color: 'var(--bg-darker)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 'bold',
+                                fontSize: '14px'
+                              }}>
+                                {firstChar}
+                              </div>
+                              <div>
+                                <h4 style={{ fontSize: '13.5px', fontWeight: 'bold', color: '#fff', margin: 0 }}>
+                                  {rev.customerName}
+                                </h4>
+                                <span style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>
+                                  {rev.productName || 'General Review'}
+                                </span>
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', justifycontent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                              {renderStars(rev.rating)}
+                              {rev.bookingId && (
+                                <span className="status-pill approved" style={{ fontSize: '8px', padding: '1px 5px' }}>
+                                  Verified ✓
+                                </span>
+                              )}
+                            </div>
+                            <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: '1.4', margin: 0 }}>
+                              "{rev.comment}"
+                            </p>
+                          </div>
+                          <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginTop: '12px', textAlign: 'right' }}>
+                            {new Date(rev.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          </div>
         </>
       )}
 
@@ -3021,7 +3268,12 @@ export default function App() {
                     <div className="product-badge-row">
                       {p.isLastStock && p.stock > 0 && <span className="badge-stock">Last in stock</span>}
                       {p.stock === 0 && <span className="badge-waitlist">Out of stock</span>}
-                      <span className="zero-deposit-text" style={{ fontSize: '10px' }}>★ {p.rating}</span>
+                      <span className="zero-deposit-text" style={{ fontSize: '10px' }}>
+                        ★ {(() => {
+                          const pReviews = reviews.filter(r => r.productId === p.id);
+                          return pReviews.length > 0 ? getAvgRating(pReviews) : '0.0';
+                        })()}
+                      </span>
                     </div>
 
                     <div className="product-img-container">
@@ -3334,6 +3586,125 @@ export default function App() {
                   })}
                 </div>
               </div>
+
+              {/* PRODUCT REVIEWS SECTION */}
+              <div className="glass-panel info-text-card" style={{ marginTop: '24px' }}>
+                <h3 style={{ borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '16px' }}>
+                  Customer Reviews ({prodCount})
+                </h3>
+                
+                {productReviews.length === 0 ? (
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px', fontStyle: 'italic', marginBottom: '24px' }}>
+                    No reviews for this product yet. Be the first to write one!
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px' }}>
+                    {productReviews.map((rev) => (
+                      <div key={rev.id} style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                          <div>
+                            <strong style={{ color: '#fff', fontSize: '14px', marginRight: '8px' }}>{rev.customerName}</strong>
+                            {rev.bookingId && (
+                              <span className="status-pill approved" style={{ fontSize: '9px', padding: '2px 6px', display: 'inline-flex', alignItems: 'center' }}>
+                                Verified Renter
+                              </span>
+                            )}
+                          </div>
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                            {new Date(rev.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                          </span>
+                        </div>
+                        <div style={{ marginBottom: '8px' }}>{renderStars(rev.rating)}</div>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: 0, lineHeight: '1.4' }}>
+                          {rev.comment}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* ADD REVIEW FORM */}
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
+                  <h4 style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '12px', color: 'var(--accent-cyan)' }}>
+                    Add a Review
+                  </h4>
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    handleReviewSubmit(selectedProduct.id);
+                  }} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Rating</label>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            type="button"
+                            key={star}
+                            onClick={() => setFormRating(star)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                          >
+                            <Star
+                              size={20}
+                              fill={star <= formRating ? 'var(--accent-cyan)' : 'none'}
+                              color="var(--accent-cyan)"
+                              strokeWidth={1.5}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="date-input-wrapper" style={{ display: 'flex', flexDirection: 'column' }}>
+                      <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Your Name</label>
+                      <input
+                        type="text"
+                        placeholder="Enter your name"
+                        value={formName}
+                        onChange={(e) => setFormName(e.target.value)}
+                        style={{
+                          background: 'var(--bg-darker)',
+                          border: '1px solid var(--border)',
+                          borderRadius: '8px',
+                          padding: '10px 12px',
+                          color: '#fff',
+                          fontSize: '13.5px'
+                        }}
+                        required
+                      />
+                    </div>
+
+                    <div className="date-input-wrapper" style={{ display: 'flex', flexDirection: 'column' }}>
+                      <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Your Review</label>
+                      <textarea
+                        placeholder="Share your experience renting this item..."
+                        value={formComment}
+                        onChange={(e) => setFormComment(e.target.value)}
+                        rows={4}
+                        style={{
+                          background: 'var(--bg-darker)',
+                          border: '1px solid var(--border)',
+                          borderRadius: '8px',
+                          padding: '10px 12px',
+                          color: '#fff',
+                          fontSize: '13.5px',
+                          resize: 'none',
+                          fontFamily: 'inherit'
+                        }}
+                        required
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="btn-signin"
+                      disabled={isSubmittingForm}
+                      style={{ width: 'fit-content', padding: '10px 24px', fontSize: '13.5px', marginTop: '6px' }}
+                    >
+                      {isSubmittingForm ? 'Submitting...' : 'Submit Review'}
+                    </button>
+                  </form>
+                </div>
+              </div>
             </div>
 
             {/* Sticky Pricing Sidebar */}
@@ -3348,6 +3719,15 @@ export default function App() {
                   {selectedProduct.name}
                 </h2>
                 <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Brand: {selectedProduct.brand}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+                  {renderStars(prodCount > 0 ? Math.round(prodAvg) : 0)}
+                  <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff' }}>
+                    {prodCount > 0 ? prodAvg : '0.0'}
+                  </span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                    ({prodCount} {prodCount === 1 ? 'Review' : 'Reviews'})
+                  </span>
+                </div>
 
                 <div style={{ marginTop: '20px' }}>
                   <h4 style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
@@ -4915,6 +5295,7 @@ export default function App() {
                                       <option value="Ordered">Ordered</option>
                                       <option value="Confirmed">Confirmed</option>
                                       <option value="Cancelled">Cancelled</option>
+                                      <option value="Delivered">Delivered</option>
                                       <option value="Completed">Completed</option>
                                       <option value="Refunded">Refunded</option>
                                       <option value="Pending">Pending</option>
