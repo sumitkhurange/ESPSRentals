@@ -1,0 +1,41 @@
+[
+  {
+    "id": "REV-100001",
+    "bookingId": "EPB-123456",
+    "productId": "ps5-standard",
+    "productName": "PlayStation 5 Console (Standard Edition)",
+    "userId": "U1779437039841",
+    "customerName": "Rohan Mehta",
+    "rating": 5,
+    "deliveryRating": 5,
+    "comment": "PS5 arrived in perfect condition. Amazing experience.",
+    "createdAt": "2026-05-30T10:15:30.000Z",
+    "featured": true
+  },
+  {
+    "id": "REV-100002",
+    "bookingId": "EPB-123457",
+    "productId": "ps5-standard",
+    "productName": "PlayStation 5 Console (Standard Edition)",
+    "userId": "U1779437510665",
+    "customerName": "Amit Sharma",
+    "rating": 5,
+    "deliveryRating": 5,
+    "comment": "Delivery was on time and setup was very easy.",
+    "createdAt": "2026-05-29T14:22:15.000Z",
+    "featured": true
+  },
+  {
+    "id": "REV-100003",
+    "bookingId": "EPB-123458",
+    "productId": "ps4-pro",
+    "productName": "PlayStation 4 Pro (1TB Console Bundle)",
+    "userId": "U1779609327124",
+    "customerName": "Sumit K.",
+    "rating": 5,
+    "deliveryRating": 4,
+    "comment": "Best gaming rental service I've used.",
+    "createdAt": "2026-05-28T09:40:00.000Z",
+    "featured": true
+  }
+]

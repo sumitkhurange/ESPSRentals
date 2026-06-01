@@ -1050,6 +1050,13 @@ app.patch('/api/bookings/:id/status', (req, res) => {
       `Hi ${booking.customerName},\n\nYour rental period for Booking ${booking.id} is now complete and all items have been successfully returned. We hope you had a great experience!`,
       booking.userId
     );
+  } else if (status === 'Delivered') {
+    sendMockEmail(
+      booking.email,
+      `Order Delivered Successfully - ${booking.id}`,
+      `Hi ${booking.customerName},\n\nYour Elite PS Rentals order ${booking.id} has been successfully delivered and set up! We hope you enjoy your premium gaming experience.\n\nPlease take a moment to rate your product and delivery service in your dashboard.`,
+      booking.userId
+    );
   }
 
   db.saveBookings(bookings);
@@ -1329,6 +1336,165 @@ app.get('/api/admin/verification-logs', (req, res) => {
   }
   const logs = db.getVerificationLogs();
   res.json(logs);
+});
+
+// ================= REVIEW ENDPOINTS =================
+
+// 1. GET /api/reviews - Fetch all reviews (newest first)
+app.get('/api/reviews', (req, res) => {
+  try {
+    let reviews = db.getReviews();
+    
+    // Optional filtering by productId
+    if (req.query.productId) {
+      reviews = reviews.filter(r => r.productId === req.query.productId);
+    }
+    
+    // Optional filtering by rating
+    if (req.query.rating) {
+      const filterRating = parseInt(req.query.rating);
+      if (!isNaN(filterRating)) {
+        reviews = reviews.filter(r => r.rating === filterRating);
+      }
+    }
+    
+    // Sort newest first
+    reviews.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    res.json(reviews);
+  } catch (error) {
+    console.error('Error fetching reviews:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// 2. POST /api/reviews - Add a new review
+app.post('/api/reviews', (req, res) => {
+  try {
+    const { bookingId, productId, customerName, rating, deliveryRating, comment } = req.body;
+    
+    if (!customerName || !rating || !comment) {
+      return res.status(400).json({ success: false, message: 'Missing name, rating, or comment.' });
+    }
+
+    const reviews = db.getReviews();
+    const bookings = db.getBookings();
+    
+    let verifiedProductId = productId || null;
+    let verifiedProductName = null;
+    let userId = null;
+    
+    // Extract userId if bearer token is present
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer elite-user-token-')) {
+      userId = authHeader.replace('Bearer elite-user-token-', '');
+    }
+    
+    // If verified checkout bookingId is provided
+    if (bookingId) {
+      // Prevent duplicate reviews for the same order
+      const duplicate = reviews.find(r => r.bookingId === bookingId);
+      if (duplicate) {
+        return res.status(400).json({ success: false, message: 'You have already submitted a review for this order.' });
+      }
+      
+      const booking = bookings.find(b => b.id === bookingId);
+      if (!booking) {
+        return res.status(404).json({ success: false, message: 'Booking not found.' });
+      }
+      
+      // Ensure booking status is Delivered or Completed
+      if (booking.status !== 'Delivered' && booking.status !== 'Completed') {
+        return res.status(400).json({ success: false, message: 'Reviews can only be submitted for delivered orders.' });
+      }
+      
+      if (booking.items && booking.items.length > 0) {
+        verifiedProductId = booking.items[0].id;
+        verifiedProductName = booking.items[0].name;
+      }
+      
+      userId = userId || booking.userId;
+    }
+    
+    // Get product details if not populated
+    if (verifiedProductId && !verifiedProductName) {
+      const products = db.getProducts();
+      const product = products.find(p => p.id === verifiedProductId);
+      if (product) {
+        verifiedProductName = product.name;
+      }
+    }
+    
+    const newReview = {
+      id: 'REV-' + Math.floor(100000 + Math.random() * 900000),
+      bookingId: bookingId || null,
+      productId: verifiedProductId,
+      productName: verifiedProductName || 'General Package',
+      userId: userId || null,
+      customerName: customerName.trim(),
+      rating: Math.min(5, Math.max(1, parseInt(rating))),
+      deliveryRating: deliveryRating ? Math.min(5, Math.max(1, parseInt(deliveryRating))) : null,
+      comment: comment.trim(),
+      createdAt: new Date().toISOString(),
+      featured: false
+    };
+    
+    reviews.unshift(newReview);
+    db.saveReviews(reviews);
+    
+    res.status(201).json({ success: true, review: newReview });
+  } catch (error) {
+    console.error('Error creating review:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// 3. DELETE /api/reviews/:id - Delete a review (Admin only)
+app.delete('/api/reviews/:id', (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer elite-admin-token-')) {
+      return res.status(401).json({ success: false, message: 'Unauthorized admin access' });
+    }
+    
+    const reviews = db.getReviews();
+    const filtered = reviews.filter(r => r.id !== req.params.id);
+    
+    if (reviews.length === filtered.length) {
+      return res.status(404).json({ success: false, message: 'Review not found.' });
+    }
+    
+    db.saveReviews(filtered);
+    res.json({ success: true, message: 'Review deleted successfully.' });
+  } catch (error) {
+    console.error('Error deleting review:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// 4. PATCH /api/reviews/:id/feature - Toggle featured status of a review (Admin only)
+app.patch('/api/reviews/:id/feature', (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer elite-admin-token-')) {
+      return res.status(401).json({ success: false, message: 'Unauthorized admin access' });
+    }
+    
+    const reviews = db.getReviews();
+    const idx = reviews.findIndex(r => r.id === req.params.id);
+    
+    if (idx === -1) {
+      return res.status(404).json({ success: false, message: 'Review not found.' });
+    }
+    
+    reviews[idx].featured = !reviews[idx].featured;
+    db.saveReviews(reviews);
+    
+    res.json({ success: true, review: reviews[idx] });
+  } catch (error) {
+    console.error('Error toggling featured status:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
 });
 
 // Start Server

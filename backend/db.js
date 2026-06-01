@@ -4,6 +4,7 @@ const path = require('path');
 const DATA_DIR = path.join(__dirname, 'data');
 const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
 const BOOKINGS_FILE = path.join(DATA_DIR, 'bookings.json');
+const REVIEWS_FILE = path.join(DATA_DIR, 'reviews.json');
 
 // Ensure data directory and files exist
 function initDB() {
@@ -17,6 +18,10 @@ function initDB() {
   
   if (!fs.existsSync(BOOKINGS_FILE)) {
     fs.writeFileSync(BOOKINGS_FILE, JSON.stringify([], null, 2), 'utf8');
+  }
+
+  if (!fs.existsSync(REVIEWS_FILE)) {
+    fs.writeFileSync(REVIEWS_FILE, JSON.stringify([], null, 2), 'utf8');
   }
 }
 
@@ -196,6 +201,26 @@ function saveVerificationLogs(logs) {
   }
 }
 
+function getReviews() {
+  try {
+    const data = fs.readFileSync(REVIEWS_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (err) {
+    console.error('Error reading reviews file:', err);
+    return [];
+  }
+}
+
+function saveReviews(reviews) {
+  try {
+    fs.writeFileSync(REVIEWS_FILE, JSON.stringify(reviews, null, 2), 'utf8');
+    return true;
+  } catch (err) {
+    console.error('Error writing reviews file:', err);
+    return false;
+  }
+}
+
 module.exports = {
   getProducts,
   saveProducts,
@@ -210,5 +235,7 @@ module.exports = {
   getEmails,
   saveEmails,
   getVerificationLogs,
-  saveVerificationLogs
+  saveVerificationLogs,
+  getReviews,
+  saveReviews
 };

@@ -233,6 +233,32 @@ export default function App() {
   const [newPasswordVal, setNewPasswordVal] = useState('');
   const [confirmNewPasswordVal, setConfirmNewPasswordVal] = useState('');
 
+  // Reviews & Ratings States
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [activeReviewRatingFilter, setActiveReviewRatingFilter] = useState('All');
+  const [adminReviewRatingFilter, setAdminReviewRatingFilter] = useState('All');
+  
+  // Review Form States
+  const [formName, setFormName] = useState('');
+  const [formProduct, setFormProduct] = useState('');
+  const [formRating, setFormRating] = useState(5);
+  const [formComment, setFormComment] = useState('');
+  const [isSubmittingForm, setIsSubmittingForm] = useState(false);
+
+  // Post-Delivery Feedback Modal States
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackBooking, setFeedbackBooking] = useState(null);
+  const [feedbackProductRating, setFeedbackProductRating] = useState(5);
+  const [feedbackDeliveryRating, setFeedbackDeliveryRating] = useState(5);
+  const [feedbackComment, setFeedbackComment] = useState('');
+  const [feedbackSuccess, setFeedbackSuccess] = useState(false);
+
+  // Calculated Product Review Variables
+  const productReviews = selectedProduct ? reviews.filter(r => r.productId === selectedProduct.id) : [];
+  const prodAvg = getAvgRating(productReviews);
+  const prodCount = productReviews.length;
+
   useEffect(() => {
     if (userProfile) {
       setProfileName(userProfile.name || '');
@@ -242,6 +268,7 @@ export default function App() {
       setProfileLanguage(userProfile.language || 'English (United States)');
       setProfileHomeAddress(userProfile.homeAddress || 'Not set');
       setProfileWorkAddress(userProfile.workAddress || 'Not set');
+      setFormName(userProfile.name || '');
     }
   }, [userProfile]);
 
@@ -397,7 +424,227 @@ export default function App() {
       setUserToken(token);
       setUserProfile(JSON.parse(profile));
     }
+    fetchReviews();
   }, []);
+
+  const getAvgRating = (reviewsList) => {
+    if (!reviewsList || reviewsList.length === 0) return 0;
+    const sum = reviewsList.reduce((acc, r) => acc + r.rating, 0);
+    return (sum / reviewsList.length).toFixed(1);
+  };
+
+  const fetchReviews = async () => {
+    setReviewsLoading(true);
+    try {
+      const res = await fetch(`${API}/api/reviews`);
+      if (res.ok) {
+        const data = await res.json();
+        setReviews(data);
+      }
+    } catch (err) {
+      console.error('Error fetching reviews:', err);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  const toggleFeatureReview = async (id) => {
+    try {
+      const token = localStorage.getItem('eliteAdminToken');
+      const res = await fetch(`${API}/api/reviews/${id}/feature`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(`Review featured status toggled!`);
+        fetchReviews();
+      } else {
+        showToast(data.message || 'Failed to toggle feature status.', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Connection error.', 'error');
+    }
+  };
+
+  const deleteReview = async (id) => {
+    if (!confirm('Are you sure you want to delete this review?')) return;
+    try {
+      const token = localStorage.getItem('eliteAdminToken');
+      const res = await fetch(`${API}/api/reviews/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast('Review deleted successfully!');
+        fetchReviews();
+      } else {
+        showToast(data.message || 'Failed to delete review.', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Connection error.', 'error');
+    }
+  };
+
+  const handleReviewSubmit = async (prodId) => {
+    if (!formName.trim() || !formComment.trim()) {
+      showToast('Please fill out all fields.', 'error');
+      return;
+    }
+    setIsSubmittingForm(true);
+    try {
+      const res = await fetch(`${API}/api/reviews`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(userToken ? { 'Authorization': `Bearer ${userToken}` } : {})
+        },
+        body: JSON.stringify({
+          productId: prodId === 'general' ? null : prodId,
+          customerName: formName,
+          rating: formRating,
+          comment: formComment
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast('Review submitted successfully!');
+        setFormComment('');
+        fetchReviews();
+      } else {
+        showToast(data.message || 'Failed to submit review.', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Error connecting to review API.', 'error');
+    } finally {
+      setIsSubmittingForm(false);
+    }
+  };
+
+  const handleFeedbackRemindLater = () => {
+    if (!feedbackBooking) return;
+    const trackingKey = `elite_suppress_${feedbackBooking.id}`;
+    let tracking = { skipCount: 0, lastReminderTime: Date.now() };
+    const raw = localStorage.getItem(trackingKey);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        tracking.skipCount = parsed.skipCount + 1;
+      } catch {}
+    } else {
+      tracking.skipCount = 1;
+    }
+    localStorage.setItem(trackingKey, JSON.stringify(tracking));
+    setShowFeedbackModal(false);
+    setFeedbackBooking(null);
+    showToast('We will remind you in 24 hours!');
+  };
+
+  const handleFeedbackSkip = () => {
+    if (!feedbackBooking) return;
+    const trackingKey = `elite_suppress_${feedbackBooking.id}`;
+    localStorage.setItem(trackingKey, JSON.stringify({ skipCount: 99, lastReminderTime: Date.now() }));
+    setShowFeedbackModal(false);
+    setFeedbackBooking(null);
+    showToast('Feedback skipped.');
+  };
+
+  const handleFeedbackSubmit = async () => {
+    if (!feedbackComment.trim()) {
+      showToast('Please provide a comment.', 'error');
+      return;
+    }
+    try {
+      const res = await fetch(`${API}/api/reviews`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(userToken ? { 'Authorization': `Bearer ${userToken}` } : {})
+        },
+        body: JSON.stringify({
+          bookingId: feedbackBooking.id,
+          productId: feedbackBooking.items?.[0]?.id,
+          customerName: userProfile?.name || 'Customer',
+          rating: feedbackProductRating,
+          deliveryRating: feedbackDeliveryRating,
+          comment: feedbackComment
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setFeedbackSuccess(true);
+        localStorage.removeItem(`elite_suppress_${feedbackBooking.id}`);
+        setTimeout(() => {
+          setShowFeedbackModal(false);
+          setFeedbackBooking(null);
+          setFeedbackSuccess(false);
+          fetchReviews();
+          fetchUserBookings(userToken);
+        }, 2200);
+      } else {
+        showToast(data.message || 'Failed to submit feedback.', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Connection error.', 'error');
+    }
+  };
+
+  // Check for delivered bookings to prompt feedback
+  useEffect(() => {
+    if (!isUserLoggedIn || !userBookings || userBookings.length === 0 || reviews.length === 0) return;
+    
+    const pendingBooking = userBookings.find(booking => {
+      if (booking.status !== 'Delivered') return false;
+      
+      const hasReview = reviews.some(r => r.bookingId === booking.id);
+      if (hasReview) return false;
+      
+      const trackingRaw = localStorage.getItem(`elite_suppress_${booking.id}`);
+      if (trackingRaw) {
+        try {
+          const tracking = JSON.parse(trackingRaw);
+          if (tracking.skipCount >= 3) return false;
+          const timePassed = Date.now() - tracking.lastReminderTime;
+          if (timePassed < 24 * 60 * 60 * 1000) {
+            return false;
+          }
+        } catch {
+          // ignore
+        }
+      }
+      return true;
+    });
+
+    if (pendingBooking && !showFeedbackModal) {
+      setFeedbackBooking(pendingBooking);
+      setFeedbackProductRating(5);
+      setFeedbackDeliveryRating(5);
+      setFeedbackComment('');
+      setFeedbackSuccess(false);
+      setShowFeedbackModal(true);
+    }
+  }, [userBookings, reviews, isUserLoggedIn]);
+
+  // Stars helper
+  const renderStars = (rating) => {
+    return (
+      <div style={{ display: 'inline-flex', gap: '2px', color: 'var(--accent-cyan)' }}>
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star 
+            key={star} 
+            size={14} 
+            fill={star <= rating ? 'var(--accent-cyan)' : 'none'} 
+            strokeWidth={1.5}
+          />
+        ))}
+      </div>
+    );
+  };
 
   // Push state on view changes if it doesn't match current state
   useEffect(() => {
@@ -2330,6 +2577,12 @@ export default function App() {
                 onClick={() => { setView('admin'); setAdminTab('verifications'); setMenuOpen(false); }}
               >
                 <span>Pending Verifications ({adminBookings.filter(b => b.verificationStatus === 'Pending').length})</span>
+              </div>
+              <div 
+                className={`drawer-link ${view === 'admin' && adminTab === 'reviews' ? 'active' : ''}`}
+                onClick={() => { setView('admin'); setAdminTab('reviews'); setMenuOpen(false); }}
+              >
+                <span>Customer Reviews ({reviews.length})</span>
               </div>
               <div 
                 className={`drawer-link ${view === 'home' ? 'active' : ''}`}
@@ -4452,6 +4705,12 @@ export default function App() {
                     >
                       Pending Verifications ({adminBookings.filter(b => b.verificationStatus === 'Pending').length})
                     </button>
+                    <button 
+                      className={`tab-btn ${adminTab === 'reviews' ? 'active' : ''}`}
+                      onClick={() => setAdminTab('reviews')}
+                    >
+                      Customer Reviews ({reviews.length})
+                    </button>
                   </div>
 
                   <button 
@@ -5325,6 +5584,163 @@ export default function App() {
                   </div>
                 );
               })()}
+
+              {adminTab === 'reviews' && (
+                <div className="glass-panel">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 'bold', margin: 0 }}>
+                      Customer Reviews & Feedback Management
+                    </h3>
+                    <button className="btn-clipboard" onClick={fetchReviews} style={{ fontSize: '12px', margin: 0 }}>
+                      Refresh Reviews
+                    </button>
+                  </div>
+
+                  {/* Summary Cards */}
+                  <div className="metrics-row" style={{ marginBottom: '24px' }}>
+                    <div className="glass-panel metric-card">
+                      <div className="metric-icon-box">⭐</div>
+                      <div className="metric-val-col">
+                        <span className="metric-title">Average Rating</span>
+                        <span className="metric-value">{getAvgRating(reviews) || '0.0'} / 5.0</span>
+                      </div>
+                    </div>
+                    <div className="glass-panel metric-card">
+                      <div className="metric-icon-box">💬</div>
+                      <div className="metric-val-col">
+                        <span className="metric-title">Total Reviews</span>
+                        <span className="metric-value">{reviews.length}</span>
+                      </div>
+                    </div>
+                    <div className="glass-panel metric-card">
+                      <div className="metric-icon-box">🚚</div>
+                      <div className="metric-val-col">
+                        <span className="metric-title">Avg Delivery Rating</span>
+                        <span className="metric-value">
+                          {(reviews.filter(r => r.deliveryRating).reduce((acc, r) => acc + r.deliveryRating, 0) / (reviews.filter(r => r.deliveryRating).length || 1)).toFixed(1)} / 5.0
+                        </span>
+                      </div>
+                    </div>
+                    <div className="glass-panel metric-card">
+                      <div className="metric-icon-box">✨</div>
+                      <div className="metric-val-col">
+                        <span className="metric-title">Featured Reviews</span>
+                        <span className="metric-value">{reviews.filter(r => r.featured).length}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Reviews Star Filter */}
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                    {['All', 5, 4, 3, 2, 1].map((star) => (
+                      <button
+                        key={star}
+                        className={`btn-clipboard ${adminReviewRatingFilter === star ? 'active' : ''}`}
+                        onClick={() => setAdminReviewRatingFilter(star)}
+                        style={{
+                          margin: 0,
+                          padding: '6px 12px',
+                          fontSize: '12px',
+                          borderColor: adminReviewRatingFilter === star ? 'var(--accent-cyan)' : 'var(--border)',
+                          background: adminReviewRatingFilter === star ? '#00e5ff0a' : 'transparent',
+                          color: adminReviewRatingFilter === star ? 'var(--accent-cyan)' : 'var(--text-secondary)'
+                        }}
+                      >
+                        {star === 'All' ? 'All Stars' : `${star} ★`}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Reviews Table */}
+                  {reviews.length === 0 ? (
+                    <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                      No reviews found.
+                    </div>
+                  ) : (
+                    <div className="admin-table-container">
+                      <table className="admin-table">
+                        <thead>
+                          <tr>
+                            <th>User/Customer</th>
+                            <th>Product</th>
+                            <th>Rating</th>
+                            <th>Comment</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {reviews
+                            .filter(r => adminReviewRatingFilter === 'All' || r.rating === adminReviewRatingFilter)
+                            .map((rev) => (
+                              <tr key={rev.id}>
+                                <td>
+                                  <div>
+                                    <strong>{rev.customerName}</strong>
+                                    {rev.bookingId && (
+                                      <div style={{ fontSize: '10px', color: 'var(--accent-green)' }}>
+                                        Verified (ID: {rev.bookingId})
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                                <td>
+                                  <div style={{ fontSize: '12.5px' }}>{rev.productName || 'General Package'}</div>
+                                  <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{rev.productId || 'general'}</span>
+                                </td>
+                                <td>
+                                  <div>Prod: {renderStars(rev.rating)}</div>
+                                  {rev.deliveryRating && (
+                                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                                      Deliv: {rev.deliveryRating} ★
+                                    </div>
+                                  )}
+                                </td>
+                                <td style={{ maxWidth: '300px', whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                                  {rev.comment}
+                                </td>
+                                <td>
+                                  {new Date(rev.createdAt).toLocaleDateString()}
+                                </td>
+                                <td>
+                                  <div style={{ display: 'flex', gap: '8px' }}>
+                                    <button
+                                      className="btn-signin"
+                                      onClick={() => toggleFeatureReview(rev.id)}
+                                      style={{
+                                        padding: '4px 8px',
+                                        fontSize: '11px',
+                                        margin: 0,
+                                        background: rev.featured ? 'rgba(0, 229, 255, 0.1)' : 'transparent',
+                                        borderColor: rev.featured ? 'var(--accent-cyan)' : 'var(--border)'
+                                      }}
+                                    >
+                                      {rev.featured ? '★ Featured' : 'Feature'}
+                                    </button>
+                                    <button
+                                      className="btn-clipboard"
+                                      onClick={() => deleteReview(rev.id)}
+                                      style={{
+                                        padding: '4px 8px',
+                                        fontSize: '11px',
+                                        margin: 0,
+                                        background: 'rgba(239, 68, 68, 0.1)',
+                                        color: '#ef4444',
+                                        borderColor: 'rgba(239, 68, 68, 0.2)'
+                                      }}
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>
@@ -5853,8 +6269,45 @@ export default function App() {
               {/* Client Dashboard Navigation Tabs removed as they are moved to the hamburger menu */}
 
               {/* Tab 1: Booking History with Delivery Status */}
-              {clientTab === 'bookings' && (
-                <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column' }}>
+              {clientTab === 'bookings' && (() => {
+                const pendingReviewBookings = userBookings.filter(b => b.status === 'Delivered' && !reviews.some(r => r.bookingId === b.id));
+                return (
+                  <>
+                    {pendingReviewBookings.length > 0 && (
+                      <div className="glass-panel" style={{ border: '1px solid var(--accent-cyan)', background: '#00e5ff05', marginBottom: '20px', padding: '16px' }}>
+                        <h4 style={{ color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', margin: '0 0 10px 0', fontWeight: 'bold' }}>
+                          <Star size={16} fill="var(--accent-cyan)" /> Pending Product Reviews
+                        </h4>
+                        <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: '0 0 12px 0' }}>
+                          You have {pendingReviewBookings.length} delivered rental{pendingReviewBookings.length > 1 ? 's' : ''} awaiting your review. Rate them to help others!
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          {pendingReviewBookings.map(b => (
+                            <div key={b.id} className="glass-panel" style={{ background: 'var(--bg-darker)', border: '1px solid var(--border)', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                              <div>
+                                <div style={{ fontWeight: 'bold', fontSize: '13.5px', color: '#fff' }}>{b.items?.[0]?.name || 'Gaming Package'}</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Order ID: {b.id} · Delivered on {new Date(b.createdAt).toLocaleDateString()}</div>
+                              </div>
+                              <button 
+                                className="btn-signin" 
+                                style={{ padding: '6px 16px', fontSize: '12.5px', margin: 0 }}
+                                onClick={() => {
+                                  setFeedbackBooking(b);
+                                  setFeedbackProductRating(5);
+                                  setFeedbackDeliveryRating(5);
+                                  setFeedbackComment('');
+                                  setFeedbackSuccess(false);
+                                  setShowFeedbackModal(true);
+                                }}
+                              >
+                                Rate Now
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column' }}>
                   <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 'bold', marginBottom: '6px' }}>
                     My Rentals & Booking History
                   </h3>
@@ -5976,7 +6429,9 @@ export default function App() {
                     </div>
                   )}
                 </div>
-              )}
+                  </>
+                );
+              })()}
 
               {/* Tab 2: Available Coupons */}
               {clientTab === 'coupons' && (
@@ -6765,6 +7220,146 @@ export default function App() {
                 Go to Dashboard
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showFeedbackModal && feedbackBooking && (
+        <div className="modal-overlay" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(5, 7, 15, 0.9)',
+          backdropFilter: 'blur(15px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px'
+        }}>
+          <div className="glass-panel feedback-modal" style={{ maxWidth: '480px', width: '100%', padding: '30px', border: '1px solid var(--border)', textAlign: 'center' }}>
+            {feedbackSuccess ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '20px 0' }} className="animate-fade-in">
+                <div style={{ fontSize: '64px', animation: 'gift-bounce 1s infinite alternate' }}>🎁</div>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '800', color: 'var(--accent-cyan)' }}>
+                  Thank You!
+                </h3>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                  Your reviews help the gaming community make informed choices. Enjoy renting with us!
+                </p>
+              </div>
+            ) : (
+              <div>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '800', marginBottom: '8px', background: 'linear-gradient(135deg, var(--accent-blue), var(--accent-cyan))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                  Rate Your Experience
+                </h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: '1.4' }}>
+                  Your console <strong>{feedbackBooking.items?.[0]?.name || 'package'}</strong> was successfully delivered! Help us improve by rating below.
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '24px' }}>
+                  {/* Product Rating */}
+                  <div>
+                    <span style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px', fontWeight: 'bold' }}>
+                      Rate the Product
+                    </span>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          type="button"
+                          key={star}
+                          onClick={() => setFeedbackProductRating(star)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                        >
+                          <Star
+                            size={28}
+                            fill={star <= feedbackProductRating ? 'var(--accent-cyan)' : 'none'}
+                            color="var(--accent-cyan)"
+                            strokeWidth={1.5}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Delivery Rating */}
+                  <div>
+                    <span style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px', fontWeight: 'bold' }}>
+                      Rate Delivery & Setup
+                    </span>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          type="button"
+                          key={star}
+                          onClick={() => setFeedbackDeliveryRating(star)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                        >
+                          <Star
+                            size={28}
+                            fill={star <= feedbackDeliveryRating ? 'var(--accent-cyan)' : 'none'}
+                            color="var(--accent-cyan)"
+                            strokeWidth={1.5}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Comments */}
+                  <div style={{ textAlign: 'left' }}>
+                    <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px', fontWeight: 'bold' }}>
+                      Your Review comments
+                    </label>
+                    <textarea
+                      placeholder="Was the delivery prompt? Did technician setup console properly?"
+                      value={feedbackComment}
+                      onChange={(e) => setFeedbackComment(e.target.value)}
+                      rows={3}
+                      style={{
+                        width: '100%',
+                        background: 'var(--bg-darker)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        padding: '10px 12px',
+                        color: '#fff',
+                        fontSize: '13px',
+                        resize: 'none',
+                        fontFamily: 'inherit'
+                      }}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <button 
+                    className="btn-clipboard" 
+                    style={{ margin: 0, padding: '12px' }}
+                    onClick={handleFeedbackRemindLater}
+                  >
+                    Remind Later
+                  </button>
+                  <button 
+                    className="btn-rent-now" 
+                    style={{ margin: 0, padding: '12px' }}
+                    onClick={handleFeedbackSubmit}
+                  >
+                    Submit Review
+                  </button>
+                </div>
+
+                <button 
+                  className="btn-clipboard" 
+                  style={{ width: '100%', margin: 0, padding: '8px', background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444', borderColor: 'transparent' }}
+                  onClick={handleFeedbackSkip}
+                >
+                  Skip Feedback
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
