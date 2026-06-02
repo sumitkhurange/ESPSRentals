@@ -217,6 +217,8 @@ export default function App() {
   const [firebaseConfirmationResult, setFirebaseConfirmationResult] = useState(null);
   const [userBookings, setUserBookings] = useState([]);
   const [clientTab, setClientTab] = useState('bookings'); // bookings, coupons, emails, profile
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [navClock, setNavClock] = useState(new Date());
 
   // Admin Booking Filters & Sort States
   const [adminBookingFilterYear, setAdminBookingFilterYear] = useState('All');
@@ -232,7 +234,33 @@ export default function App() {
   const [profileLanguage, setProfileLanguage] = useState('English (United States)');
   const [profileHomeAddress, setProfileHomeAddress] = useState('Not set');
   const [profileWorkAddress, setProfileWorkAddress] = useState('Not set');
+  const [profileAadhaarNumber, setProfileAadhaarNumber] = useState('');
+  const [profileAlternatePhone, setProfileAlternatePhone] = useState('');
+  const [profileCity, setProfileCity] = useState('');
+  const [profileState, setProfileState] = useState('');
+  const [profileZipCode, setProfileZipCode] = useState('');
+  const [profileCompanyName, setProfileCompanyName] = useState('');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+
+  // Custom Datepicker States & Helper functions
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dpSelectedDate, setDpSelectedDate] = useState(new Date());
+  const [dpCurrentMonth, setDpCurrentMonth] = useState(new Date().getMonth());
+  const [dpCurrentYear, setDpCurrentYear] = useState(new Date().getFullYear());
+
+  const parseBirthdayDate = (birthdayStr) => {
+    if (!birthdayStr || birthdayStr === 'Not set') return new Date();
+    const parts = birthdayStr.split('-');
+    if (parts.length === 3) {
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1; // 0-indexed
+      const year = parseInt(parts[2], 10);
+      if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+        return new Date(year, month, day);
+      }
+    }
+    return new Date();
+  };
 
   // Change Password fields
   const [currPassword, setCurrPassword] = useState('');
@@ -274,9 +302,40 @@ export default function App() {
       setProfileLanguage(userProfile.language || 'English (United States)');
       setProfileHomeAddress(userProfile.homeAddress || 'Not set');
       setProfileWorkAddress(userProfile.workAddress || 'Not set');
+      setProfileAadhaarNumber(userProfile.aadhaarNumber || '');
+      setProfileAlternatePhone(userProfile.alternatePhone || '');
+      setProfileCity(userProfile.city || '');
+      setProfileState(userProfile.state || '');
+      setProfileZipCode(userProfile.zipCode || '');
+      setProfileCompanyName(userProfile.companyName || '');
       setFormName(userProfile.name || '');
     }
   }, [userProfile]);
+
+  const isProfileIncomplete = isUserLoggedIn && userProfile && (
+    !userProfile.name || !userProfile.name.trim() || 
+    !userProfile.phone || !userProfile.phone.trim() || 
+    !userProfile.birthday || userProfile.birthday === 'Not set' || !userProfile.birthday.trim() || 
+    !userProfile.homeAddress || userProfile.homeAddress === 'Not set' || !userProfile.homeAddress.trim() || 
+    !userProfile.workAddress || userProfile.workAddress === 'Not set' || !userProfile.workAddress.trim() || 
+    !userProfile.aadhaarNumber || !userProfile.aadhaarNumber.trim() || 
+    !userProfile.alternatePhone || !userProfile.alternatePhone.trim() || 
+    !userProfile.city || !userProfile.city.trim() || 
+    !userProfile.state || !userProfile.state.trim() || 
+    !userProfile.zipCode || !userProfile.zipCode.trim() || 
+    !userProfile.companyName || !userProfile.companyName.trim()
+  );
+
+  // Enforce profile completion for logged-in users
+  useEffect(() => {
+    if (isProfileIncomplete) {
+      if (view !== 'client-dashboard' || clientTab !== 'profile' || !isEditingProfile) {
+        setView('client-dashboard');
+        setClientTab('profile');
+        setIsEditingProfile(true);
+      }
+    }
+  }, [isProfileIncomplete, view, clientTab, isEditingProfile]);
 
   // Auto-fill checkout delivery form from user profile when checkout opens
   useEffect(() => {
@@ -411,6 +470,7 @@ export default function App() {
   const [myEmails, setMyEmails] = useState([]);
   const [adminEmails, setAdminEmails] = useState([]);
   const [adminVerificationLogs, setAdminVerificationLogs] = useState([]);
+  const [adminVerifiedUsers, setAdminVerifiedUsers] = useState([]);
 
   // Browser Back Button Navigation Confirmation
   const [showBackConfirm, setShowBackConfirm] = useState(false);
@@ -630,6 +690,12 @@ export default function App() {
     }
   }, [userBookings, reviews, isUserLoggedIn]);
 
+  // Live clock ticker
+  useEffect(() => {
+    const clockInterval = setInterval(() => setNavClock(new Date()), 1000);
+    return () => clearInterval(clockInterval);
+  }, []);
+
   // Stars helper
   const renderStars = (rating) => {
     return (
@@ -769,6 +835,21 @@ export default function App() {
       }
     } catch (err) {
       console.error('Error fetching admin verification logs:', err);
+    }
+  };
+
+  const fetchAdminVerifiedUsers = async () => {
+    try {
+      const token = localStorage.getItem('eliteAdminToken');
+      const res = await fetch(`${API}/api/admin/verified-users`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) setAdminVerifiedUsers(data.users);
+      }
+    } catch (err) {
+      console.error('Error fetching verified users:', err);
     }
   };
 
@@ -983,27 +1064,24 @@ export default function App() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setSignupSessionId(data.signupSessionId);
-        setOtpDigits(['', '', '', '', '', '']);
-        setDevOtpHint(''); // reset hint
-        setTimer(300); // 5 minutes countdown
+        setUserToken(data.token);
+        setUserProfile(data.user);
+        setIsUserLoggedIn(true);
+        localStorage.setItem('eliteUserToken', data.token);
+        localStorage.setItem('eliteUserProfile', JSON.stringify(data.user));
+        showToast('Account created successfully!');
         
-        let sentViaFirebase = false;
-        if (isFirebaseConfigured) {
-          showToast('Signup initiated. Sending verification SMS via Firebase...');
-          sentViaFirebase = await sendFirebaseSmsOtp(signupPhone);
-        }
+        // Take them to profile form directly in Edit Mode
+        setView('client-dashboard');
+        setClientTab('profile');
+        setIsEditingProfile(true);
 
-        if (!sentViaFirebase) {
-          // Fall back to server SMS verification
-          if (data.devMode && data.devSmsOtp) {
-            setDevOtpHint(data.devSmsOtp);
-            showToast(`⚠️ Simulated SMS OTP: Please check the yellow banner!`);
-          } else {
-            showToast('Signup initiated. SMS OTP sent to your phone.');
-          }
-        }
-        setSignupStep(3); // Go directly to Mobile Verification
+        // Reset signup fields
+        setSignupName('');
+        setSignupEmail('');
+        setSignupPassword('');
+        setSignupPhone('');
+        setSignupStep(1);
       } else {
         showToast(data.message || 'Signup failed.', 'error');
       }
@@ -1232,6 +1310,44 @@ export default function App() {
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
+
+    // Validations: All fields must be filled and mandatory
+    if (!profileName || !profileName.trim()) { showToast('Name is mandatory.', 'error'); return; }
+    if (!profilePhone || !profilePhone.trim()) { showToast('Phone Number is mandatory.', 'error'); return; }
+    if (profilePhone.replace(/\D/g, '').slice(-10).length !== 10) {
+      showToast('Phone Number must be a valid 10-digit number.', 'error');
+      return;
+    }
+    if (profileGender === 'Prefer not to say') { showToast('Please select your Gender (Male or Female).', 'error'); return; }
+    if (!profileBirthday || profileBirthday === 'Not set' || !profileBirthday.trim()) { showToast('Birthday is mandatory.', 'error'); return; }
+    
+    // Age check: must be at least 18
+    const birthDate = parseBirthdayDate(profileBirthday);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    if (age < 18) {
+      showToast('You must be at least 18 years old to register/rent.', 'error');
+      return;
+    }
+    if (!profileLanguage || profileLanguage === 'Not set' || !profileLanguage.trim()) { showToast('Language is mandatory.', 'error'); return; }
+    if (!profileHomeAddress || profileHomeAddress === 'Not set' || !profileHomeAddress.trim()) { showToast('Home Address is mandatory.', 'error'); return; }
+    if (!profileWorkAddress || profileWorkAddress === 'Not set' || !profileWorkAddress.trim()) { showToast('Work Address is mandatory.', 'error'); return; }
+    if (!profileAadhaarNumber || !profileAadhaarNumber.trim()) { showToast('Aadhaar Number is mandatory.', 'error'); return; }
+    if (!/^\d{12}$/.test(profileAadhaarNumber.replace(/\s/g, ''))) { showToast('Aadhaar Number must be a 12-digit number.', 'error'); return; }
+    if (!profileAlternatePhone || !profileAlternatePhone.trim()) { showToast('Alternate Phone Number is mandatory.', 'error'); return; }
+    if (profileAlternatePhone.replace(/\D/g, '').slice(-10).length !== 10) {
+      showToast('Alternate Phone Number must be a valid 10-digit number.', 'error');
+      return;
+    }
+    if (!profileCity || !profileCity.trim()) { showToast('City is mandatory.', 'error'); return; }
+    if (!profileState || !profileState.trim()) { showToast('State is mandatory.', 'error'); return; }
+    if (!profileZipCode || !profileZipCode.trim()) { showToast('Zip Code is mandatory.', 'error'); return; }
+    if (!profileCompanyName || !profileCompanyName.trim()) { showToast('Company Name is mandatory.', 'error'); return; }
+
     setIsSubmitting(true);
     try {
       const res = await fetch(`${API}/api/auth/update-profile`, {
@@ -1247,7 +1363,13 @@ export default function App() {
           birthday: profileBirthday,
           language: profileLanguage,
           homeAddress: profileHomeAddress,
-          workAddress: profileWorkAddress
+          workAddress: profileWorkAddress,
+          aadhaarNumber: profileAadhaarNumber,
+          alternatePhone: profileAlternatePhone,
+          city: profileCity,
+          state: profileState,
+          zipCode: profileZipCode,
+          companyName: profileCompanyName
         })
       });
       const data = await res.json();
@@ -1256,6 +1378,7 @@ export default function App() {
         localStorage.setItem('eliteUserProfile', JSON.stringify(data.user));
         showToast('Profile updated successfully!');
         setIsEditingProfile(false);
+        setClientTab('bookings'); // Take user to dashboard bookings history
       } else {
         showToast(data.message || 'Profile update failed.', 'error');
       }
@@ -1707,6 +1830,7 @@ export default function App() {
       fetchAdminCoupons();
       fetchAdminEmails();
       fetchAdminVerificationLogs();
+      fetchAdminVerifiedUsers();
     }
   }, [isAdminLoggedIn]);
 
@@ -2585,6 +2709,12 @@ export default function App() {
                 <span>Customer Reviews ({reviews.length})</span>
               </div>
               <div 
+                className={`drawer-link ${view === 'admin' && adminTab === 'verified-accounts' ? 'active' : ''}`}
+                onClick={() => { setView('admin'); setAdminTab('verified-accounts'); fetchAdminData(); setMenuOpen(false); }}
+              >
+                <span>Verified Docs & Bills ({adminBookings.filter(b => b.verificationStatus === 'Approved').length})</span>
+              </div>
+              <div 
                 className={`drawer-link ${view === 'home' ? 'active' : ''}`}
                 onClick={() => { setView('home'); setSelectedProduct(null); setMenuOpen(false); }}
               >
@@ -2648,6 +2778,12 @@ export default function App() {
                     onClick={() => { setView('client-dashboard'); setClientTab('emails'); setMenuOpen(false); }}
                   >
                     <span>Mailbox Notifications</span>
+                  </div>
+                  <div
+                    className={`drawer-link ${view === 'client-dashboard' && clientTab === 'verified-docs' ? 'active' : ''}`}
+                    onClick={() => { setView('client-dashboard'); setClientTab('verified-docs'); setMenuOpen(false); }}
+                  >
+                    <span>Verified Docs & Bills ({userBookings.filter(b => b.verificationStatus === 'Approved').length})</span>
                   </div>
                   <div
                     className={`drawer-link ${view === 'client-dashboard' && clientTab === 'profile' ? 'active' : ''}`}
@@ -2782,15 +2918,65 @@ export default function App() {
             </button>
           )}
 
+
           {isAdminLoggedIn ? (
             <div className="user-profile-btn" onClick={() => setView('admin')}>
               <Activity size={14} />
               <span>Admin Portal</span>
             </div>
           ) : isUserLoggedIn ? (
-            <div className="user-profile-btn" onClick={() => { setView('client-dashboard'); setClientTab('profile'); }}>
-              <User size={14} />
-              <span>{userProfile?.name || 'My Account'}</span>
+            <div style={{ position: 'relative' }}>
+              <div
+                className="user-profile-btn"
+                onClick={() => setProfileDropdownOpen(v => !v)}
+                style={{ cursor: 'pointer', userSelect: 'none' }}
+              >
+                <User size={14} />
+                <span>{userProfile?.name || 'My Account'}</span>
+                <ChevronDown size={12} style={{ marginLeft: '2px', opacity: 0.7, transform: profileDropdownOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
+              </div>
+              {profileDropdownOpen && (
+                <div
+                  style={{
+                    position: 'absolute', right: 0, top: 'calc(100% + 8px)', zIndex: 2000,
+                    background: 'var(--bg-light-dark)', border: '1px solid var(--border)',
+                    borderRadius: '10px', padding: '6px', minWidth: '160px',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                    animation: 'fadeInDown 0.15s ease'
+                  }}
+                  onClick={() => setProfileDropdownOpen(false)}
+                >
+                  <div
+                    style={{ padding: '8px 12px', fontSize: '12px', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}
+                  >
+                    {userProfile?.email}
+                  </div>
+                  <button
+                    onClick={() => { setView('client-dashboard'); setClientTab('bookings'); }}
+                    style={{ width: '100%', padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', color: '#fff', fontSize: '13px', cursor: 'pointer', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                  >
+                    <ShoppingCart size={13} /> My Bookings
+                  </button>
+                  <button
+                    onClick={() => { setView('client-dashboard'); setClientTab('profile'); }}
+                    style={{ width: '100%', padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', color: '#fff', fontSize: '13px', cursor: 'pointer', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                  >
+                    <User size={13} /> Profile
+                  </button>
+                  <button
+                    onClick={handleUserLogout}
+                    style={{ width: '100%', padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', color: '#ef4444', fontSize: '13px', cursor: 'pointer', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.08)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                  >
+                    <LogOut size={13} /> Logout
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <button className="btn-signin" onClick={() => { setLoginEmail(''); setLoginPassword(''); setView('login'); }}>
@@ -3415,6 +3601,168 @@ export default function App() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* RENTAL AGREEMENT TERMS VIEW */}
+      {view === 'agreement-terms' && (
+        <>
+          <div className="section-header" style={{ marginTop: '24px' }}>
+            <h2 className="section-title">Rental Agreement <span>Terms & Conditions</span></h2>
+            <p className="section-subtitle">Please read these rules and guidelines carefully before renting equipment.</p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginBottom: '48px' }}>
+            <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '800', color: 'var(--accent-cyan)' }}>1. Zero Security Deposit Policy</h3>
+              <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', fontSize: '14.5px' }}>
+                We offer a zero security deposit rental model. However, this is strictly conditional upon successful completion of identity verification (KYC) and proof of address. If the KYC verification fails, the booking will be immediately cancelled, and any payments made will be refunded within 24 hours.
+              </p>
+            </div>
+
+            <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '800', color: 'var(--accent-cyan)' }}>2. Device Safety & General Usage</h3>
+              <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', fontSize: '14.5px' }}>
+                Renters must adhere to the following rules to ensure the safety and longevity of our premium hardware:
+              </p>
+              <ul style={{ color: 'var(--text-secondary)', paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px', lineHeight: '1.5' }}>
+                <li>Consoles, headsets, and controllers are strictly for personal, indoor use in dust-free and well-ventilated rooms.</li>
+                <li>Do not expose the hardware to extreme temperatures, direct sunlight, moisture, or liquid spills.</li>
+                <li>Connect all consoles to a high-quality surge protector or UPS to protect against voltage fluctuations.</li>
+                <li>Keep the equipment out of reach of pets and infants.</li>
+              </ul>
+            </div>
+
+            <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '800', color: 'var(--accent-cyan)' }}>3. Damage Liability & Financial Responsibility</h3>
+              <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', fontSize: '14.5px' }}>
+                The renter is solely responsible for the hardware from the moment of setup until it is returned and verified by our representative.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '8px' }}>
+                <div style={{ padding: '16px', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px' }}>
+                  <h4 style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' }}>Physical/Liquid Damage</h4>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: '1.5' }}>
+                    Any physical breakage, cracked housings, liquid infiltration, or accessory loss will be charged to the renter up to the full replacement cost of the hardware.
+                  </p>
+                </div>
+                <div style={{ padding: '16px', background: 'rgba(52, 211, 153, 0.05)', border: '1px solid rgba(52, 211, 153, 0.2)', borderRadius: '8px' }}>
+                  <h4 style={{ color: 'var(--accent-green)', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' }}>Normal Wear & Tear</h4>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: '1.5' }}>
+                    Minor cosmetic scuffs or internal software malfunctions not caused by misuse are covered by Elite PS Rentals and will not attract charges.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '800', color: 'var(--accent-cyan)' }}>4. Booking Extensions & Return Policy</h3>
+              <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', fontSize: '14.5px' }}>
+                Our consoles are highly in demand. If you want to extend your rental tenure, please contact us on WhatsApp at least 48 hours before your active tenure expires. Extensions are subject to availability.
+              </p>
+              <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', fontSize: '14.5px' }}>
+                Delayed returns without prior extension approval will attract a daily late fee of ₹500/day. Equipment must be handed over in its original condition and packaging.
+              </p>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* VERIFICATION FAQ VIEW */}
+      {view === 'verification-faq' && (
+        <>
+          <div className="section-header" style={{ marginTop: '24px' }}>
+            <h2 className="section-title">Verification <span>FAQ</span></h2>
+            <p className="section-subtitle">Everything you need to know about our identity verification and KYC process.</p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '48px' }}>
+            {[
+              {
+                q: "What is KYC and why is it mandatory?",
+                a: "KYC (Know Your Customer) is an identity check to ensure security and prevent device theft or misuse. Since we provide high-value gaming consoles (like PS5) with zero security deposit, identity verification is necessary to confirm customer details before dispatch."
+              },
+              {
+                q: "What documents are accepted for verification?",
+                a: "We accept digital Aadhaar (UIDAI), Driving License, or Voter ID cards. The document must show your current residential address, which should match your delivery address. A matching electricity bill or rent agreement may be requested if your Aadhaar has a different address."
+              },
+              {
+                q: "Why do you require a live selfie capture?",
+                a: "Our system performs an automated biometric check to compare your live selfie with the photo on your government identity card. This ensures that the person booking the console is the actual owner of the uploaded document, preventing identity theft and fraud."
+              },
+              {
+                q: "How long does the verification process take?",
+                a: "Our compliance team reviews bookings within 30 minutes of submission. You will receive an immediate confirmation SMS and email once your booking is approved, or our representative will contact you if additional details are needed."
+              },
+              {
+                q: "Is my personal data and document copy safe?",
+                a: "Yes. Data security is our highest priority. All uploaded identity card scans and selfies are encrypted using military-grade AES-256 standards, transmitted over secure TLS 1.3 channels, and strictly stored on protected server folders. They are automatically deleted 30 days after the return of your rented equipment."
+              }
+            ].map((faq, index) => (
+              <div key={index} className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 'bold', color: 'var(--accent-cyan)', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--accent-blue)', background: 'rgba(0,122,255,0.1)', padding: '2px 8px', borderRadius: '4px', fontSize: '12px' }}>Q</span>
+                  {faq.q}
+                </h4>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: '1.6', paddingLeft: '32px' }}>
+                  {faq.a}
+                </p>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* PRIVACY POLICY VIEW */}
+      {view === 'privacy-policy' && (
+        <>
+          <div className="section-header" style={{ marginTop: '24px' }}>
+            <h2 className="section-title">Privacy <span>Policy</span></h2>
+            <p className="section-subtitle">How we protect, encrypt, and handle your identity and personal data.</p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginBottom: '48px' }}>
+            <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>1. Information We Collect</h3>
+              <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', fontSize: '14px' }}>
+                To fulfill your rental orders and verify your eligibility for zero-deposit renting, we collect:
+              </p>
+              <ul style={{ color: 'var(--text-secondary)', paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13.5px' }}>
+                <li>Personal identifiers: Full Name, Email Address, Primary Phone, and Alternate Phone.</li>
+                <li>Government-issued Identity documents: Aadhaar Number and images of your physical ID card.</li>
+                <li>Verification media: Biometric liveness check selfie and a digital signature for terms agreement.</li>
+                <li>Address details: Residential address and optional company information.</li>
+              </ul>
+            </div>
+
+            <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>2. Security & Bank-Grade Encryption</h3>
+              <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', fontSize: '14px' }}>
+                Your data is stored and handled with the highest security measures:
+              </p>
+              <ul style={{ color: 'var(--text-secondary)', paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13.5px' }}>
+                <li><strong>Encryption in Transit:</strong> All data, including high-resolution ID images and selfies, is transmitted over HTTPS with TLS 1.3 encryption.</li>
+                <li><strong>Encryption at Rest:</strong> Customer credentials and identity card scans are stored using AES-256 database-level encryption.</li>
+                <li><strong>Strict Access Controls:</strong> Only authorized compliance supervisors have access to view ID documents for verification purposes.</li>
+              </ul>
+            </div>
+
+            <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>3. Retention & Automatic Deletion</h3>
+              <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', fontSize: '14px' }}>
+                We believe in data minimization. We do not keep your sensitive identity verification files permanently:
+              </p>
+              <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', fontSize: '14px' }}>
+                Your uploaded documents (Aadhaar cards and selfies) are retained in our secure repository solely for the duration of the rental term. Once you return the console and our inspection confirms no damage, all identity images are permanently deleted from our servers within 30 days.
+              </p>
+            </div>
+
+            <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>4. Third-Party Sharing</h3>
+              <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', fontSize: '14px' }}>
+                Elite PS Rentals does not sell, trade, or distribute your identity details or document copies to any third-party marketing companies or advertising agencies. Information is shared only with compliance tools for liveness analysis, and with law enforcement agencies solely in extreme cases of intentional asset theft or damage non-compliance.
+              </p>
             </div>
           </div>
         </>
@@ -4086,15 +4434,39 @@ export default function App() {
                     />
                   </div>
 
-                  <div className="form-group">
+                   <div className="form-group">
                     <label>Phone Number (WhatsApp Active)</label>
-                    <input 
-                      type="tel" 
-                      className="form-input" 
-                      placeholder="e.g. 081808 07208"
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                    />
+                    <div style={{ display: 'flex', marginTop: '4px', width: '100%' }}>
+                      <span style={{ 
+                        display: 'flex',
+                        alignItems: 'center',
+                        background: 'var(--bg-light-dark)', 
+                        border: '1px solid var(--border)', 
+                        borderRight: 'none', 
+                        borderTopLeftRadius: '8px', 
+                        borderBottomLeftRadius: '8px', 
+                        padding: '0 12px', 
+                        color: 'var(--accent-cyan)', 
+                        fontWeight: 'bold', 
+                        fontSize: '14px' 
+                      }}>+91</span>
+                      <input 
+                        type="tel" 
+                        className="form-input" 
+                        placeholder="98765 43210"
+                        style={{ 
+                          flex: 1, 
+                          borderTopLeftRadius: 0, 
+                          borderBottomLeftRadius: 0,
+                          marginTop: 0 
+                        }} 
+                        value={customerPhone.replace(/^\+91\s*/, '')}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                          setCustomerPhone(val ? `+91 ${val}` : '');
+                        }}
+                      />
+                    </div>
                   </div>
 
                   <div className="form-group">
@@ -4805,8 +5177,8 @@ export default function App() {
                         ❌ Verification Rejected (Order Cancelled)
                       </div>
                     )}
-                    <button className="btn-clipboard" onClick={() => { setCart([]); setView(isUserLoggedIn ? 'client-dashboard' : 'home'); }}>
-                      {isUserLoggedIn ? 'Back to Dashboard' : 'Back to Catalog'}
+                    <button className="btn-clipboard" onClick={() => { setCart([]); setView('home'); }}>
+                      Back to Home
                     </button>
                   </div>
                 </div>
@@ -4857,6 +5229,7 @@ export default function App() {
                         type="checkbox" 
                         checked={useCredits} 
                         onChange={() => setUseCredits(!useCredits)} 
+                        disabled={checkoutStep >= 2}
                       />
                       <span className="slider-toggle"></span>
                     </label>
@@ -4871,71 +5244,82 @@ export default function App() {
 
                   {/* Coupon Application Block */}
                   <div style={{ borderTop: '1px solid var(--border)', paddingTop: '10px', marginTop: '6px' }}>
-                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>
-                      Apply Promo Coupon Code
-                    </label>
+                    {checkoutStep === 1 ? (
+                      <>
+                        <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>
+                          Apply Promo Coupon Code
+                        </label>
 
-                    {/* Available coupon chips */}
-                    {!appliedCoupon && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
-                        {[{ code: 'FIRST10', desc: '10% OFF' }, { code: 'LOYAL10', desc: '10% OFF' }, { code: 'ELITE100', desc: '₹100 OFF' }].map(c => (
-                          <button
-                            key={c.code}
-                            type="button"
-                            onClick={() => {
-                              setCouponCodeInput(c.code);
-                              setTimeout(() => {
-                                fetch(`${API}/api/coupons/apply`, {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ code: c.code, email: customerEmail || userProfile?.email || 'guest@elite.com' })
-                                }).then(r => r.json()).then(data => {
-                                  if (data.success) {
-                                    setAppliedCoupon(data.coupon);
-                                    setCouponMessage(`Coupon ${c.code} applied! ${data.coupon.description}`);
-                                    showToast(`Coupon ${c.code} applied!`);
-                                  } else {
-                                    setCouponMessage(data.message || 'Could not apply coupon.');
-                                  }
-                                }).catch(() => setCouponMessage('Network error.'));
-                              }, 0);
-                            }}
-                            style={{
-                              background: 'rgba(0,229,255,0.08)',
-                              border: '1px dashed rgba(0,229,255,0.35)',
-                              borderRadius: '6px',
-                              padding: '3px 10px',
-                              fontSize: '11px',
-                              color: 'var(--accent-cyan)',
-                              cursor: 'pointer',
-                              fontWeight: 'bold',
-                              display: 'flex',
-                              gap: '5px',
-                              alignItems: 'center'
-                            }}
-                          >
-                            {c.code} <span style={{ color: 'var(--accent-green)', fontSize: '10px' }}>{c.desc}</span>
+                        {/* Available coupon chips */}
+                        {!appliedCoupon && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                            {[{ code: 'FIRST10', desc: '10% OFF' }, { code: 'LOYAL10', desc: '10% OFF' }, { code: 'ELITE100', desc: '₹100 OFF' }].map(c => (
+                              <button
+                                key={c.code}
+                                type="button"
+                                onClick={() => {
+                                  setCouponCodeInput(c.code);
+                                  setTimeout(() => {
+                                    fetch(`${API}/api/coupons/apply`, {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ code: c.code, email: customerEmail || userProfile?.email || 'guest@elite.com' })
+                                    }).then(r => r.json()).then(data => {
+                                      if (data.success) {
+                                        setAppliedCoupon(data.coupon);
+                                        setCouponMessage(`Coupon ${c.code} applied! ${data.coupon.description}`);
+                                        showToast(`Coupon ${c.code} applied!`);
+                                      } else {
+                                        setCouponMessage(data.message || 'Could not apply coupon.');
+                                      }
+                                    }).catch(() => setCouponMessage('Network error.'));
+                                  }, 0);
+                                }}
+                                style={{
+                                  background: 'rgba(0,229,255,0.08)',
+                                  border: '1px dashed rgba(0,229,255,0.35)',
+                                  borderRadius: '6px',
+                                  padding: '3px 10px',
+                                  fontSize: '11px',
+                                  color: 'var(--accent-cyan)',
+                                  cursor: 'pointer',
+                                  fontWeight: 'bold',
+                                  display: 'flex',
+                                  gap: '5px',
+                                  alignItems: 'center'
+                                }}
+                              >
+                                {c.code} <span style={{ color: 'var(--accent-green)', fontSize: '10px' }}>{c.desc}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <input
+                            type="text"
+                            className="form-input"
+                            placeholder="e.g. FIRST10"
+                            style={{ padding: '6px 10px', fontSize: '12px' }}
+                            value={couponCodeInput}
+                            onChange={(e) => setCouponCodeInput(e.target.value.toUpperCase())}
+                          />
+                          <button className="btn-rent-now" onClick={handleApplyCoupon} style={{ width: 'auto', padding: '6px 12px', fontSize: '11px' }}>
+                            Apply
                           </button>
-                        ))}
-                      </div>
-                    )}
-
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="e.g. FIRST10"
-                        style={{ padding: '6px 10px', fontSize: '12px' }}
-                        value={couponCodeInput}
-                        onChange={(e) => setCouponCodeInput(e.target.value.toUpperCase())}
-                      />
-                      <button className="btn-rent-now" onClick={handleApplyCoupon} style={{ width: 'auto', padding: '6px 12px', fontSize: '11px' }}>
-                        Apply
-                      </button>
-                    </div>
-                    {couponMessage && (
-                      <div style={{ fontSize: '11px', color: couponMessage.includes('applied') ? 'var(--accent-cyan)' : '#ef4444', marginTop: '6px' }}>
-                        {couponMessage}
+                        </div>
+                        {couponMessage && (
+                          <div style={{ fontSize: '11px', color: couponMessage.includes('applied') ? 'var(--accent-cyan)' : '#ef4444', marginTop: '6px' }}>
+                            {couponMessage}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', padding: '4px 0' }}>
+                        <span style={{ color: 'var(--text-secondary)', fontWeight: 'bold' }}>Coupon Applied</span>
+                        <span style={{ fontWeight: 'bold', color: appliedCoupon ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>
+                          {appliedCoupon ? appliedCoupon.code : '-'}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -5063,6 +5447,12 @@ export default function App() {
                       onClick={() => setAdminTab('reviews')}
                     >
                       Customer Reviews ({reviews.length})
+                    </button>
+                    <button 
+                      className={`tab-btn ${adminTab === 'verified-accounts' ? 'active' : ''}`}
+                      onClick={() => { setAdminTab('verified-accounts'); fetchAdminData(); }}
+                    >
+                      Verified Docs & Bills ({adminBookings.filter(b => b.verificationStatus === 'Approved').length})
                     </button>
                   </div>
 
@@ -5374,15 +5764,56 @@ export default function App() {
                         />
                       </div>
 
-                      <div className="form-group">
-                        <label>Product Image URL</label>
-                        <input 
-                          type="text" 
-                          className="form-input" 
-                          placeholder="e.g. /images/ps5.png" 
-                          value={newProductForm.image}
-                          onChange={(e) => setNewProductForm({...newProductForm, image: e.target.value})}
-                        />
+                      {/* Image upload section */}
+                      <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div style={{ flexShrink: 0 }}>
+                          <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '8px' }}>Device Image</label>
+                          <div
+                            style={{
+                              width: '80px', height: '80px', borderRadius: '50%',
+                              border: '2px dashed var(--border)', background: 'var(--bg-darker)',
+                              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                              cursor: 'pointer', position: 'relative', overflow: 'hidden',
+                              transition: 'border-color 0.2s'
+                            }}
+                            onClick={() => document.getElementById('productImageUpload').click()}
+                            onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent-cyan)'}
+                            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+                          >
+                            {newProductForm.image && (newProductForm.image.startsWith('data:') || newProductForm.image.startsWith('/')) ? (
+                              <img src={newProductForm.image} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                            ) : (
+                              <>
+                                <Camera size={22} style={{ color: 'var(--accent-cyan)' }} />
+                                <span style={{ fontSize: '8px', color: 'var(--text-muted)', marginTop: '4px', textAlign: 'center', lineHeight: 1.2 }}>Upload</span>
+                              </>
+                            )}
+                            <input
+                              id="productImageUpload"
+                              type="file"
+                              accept="image/*"
+                              style={{ display: 'none' }}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onload = (ev) => setNewProductForm({...newProductForm, image: ev.target.result});
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                            />
+                          </div>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '8px' }}>Or Image URL</label>
+                          <input
+                            type="text"
+                            className="form-input"
+                            placeholder="e.g. /images/ps5.png"
+                            value={newProductForm.image?.startsWith('data:') ? '' : newProductForm.image}
+                            onChange={(e) => setNewProductForm({...newProductForm, image: e.target.value})}
+                          />
+                        </div>
                       </div>
 
                       <div className="date-pickers-row">
@@ -5424,7 +5855,7 @@ export default function App() {
                         />
                       </div>
 
-                      <div className="date-pickers-row">
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                         <div className="form-group">
                           <label>Rate (1 Day, ₹)</label>
                           <input 
@@ -5452,9 +5883,6 @@ export default function App() {
                             onChange={(e) => setNewProductForm({...newProductForm, price3: e.target.value})}
                           />
                         </div>
-                      </div>
-
-                      <div className="date-pickers-row">
                         <div className="form-group">
                           <label>Rate (1 Week, ₹/week)</label>
                           <input 
@@ -5464,7 +5892,7 @@ export default function App() {
                             onChange={(e) => setNewProductForm({...newProductForm, price7: e.target.value})}
                           />
                         </div>
-                        <div className="form-group">
+                        <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                           <label>Rate (1 Month, ₹/month)</label>
                           <input 
                             type="number" 
@@ -6095,6 +6523,95 @@ export default function App() {
                   )}
                 </div>
               )}
+
+              {adminTab === 'verified-accounts' && (() => {
+                const approvedBookings = adminBookings.filter(b => b.verificationStatus === 'Approved');
+                return (
+                  <div className="glass-panel">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                      <div>
+                        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 'bold', margin: 0, color: '#fff' }}>
+                          ✅ Verified Documents & Bills
+                        </h3>
+                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
+                          Bookings approved by admin with completed document verification • Total: {approvedBookings.length}
+                        </p>
+                      </div>
+                      <button className="btn-clipboard" onClick={fetchAdminData} style={{ fontSize: '12px', margin: 0 }}>
+                        Refresh
+                      </button>
+                    </div>
+
+                    {approvedBookings.length === 0 ? (
+                      <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                        No approved bookings yet. Approve documents from the Pending Verifications tab.
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        {approvedBookings.map((b, idx) => (
+                          <div key={b.id} style={{ border: '1px solid rgba(16,185,129,0.3)', borderRadius: '12px', background: 'rgba(16,185,129,0.03)', overflow: 'hidden' }}>
+                            {/* Header */}
+                            <div style={{ background: 'rgba(16,185,129,0.08)', padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(16,185,129,0.2)' }}>
+                              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                <span style={{ fontWeight: 'bold', color: 'var(--accent-cyan)', fontSize: '14px', fontFamily: 'monospace' }}>{b.id}</span>
+                                <span className="status-pill completed" style={{ fontSize: '10px' }}>✅ APPROVED</span>
+                              </div>
+                              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{new Date(b.createdAt).toLocaleString('en-IN')}</span>
+                            </div>
+
+                            <div style={{ padding: '16px 20px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                              {/* Customer Info */}
+                              <div>
+                                <div style={{ fontSize: '10px', color: 'var(--accent-cyan)', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '6px' }}>Renter</div>
+                                <div style={{ fontWeight: '700', fontSize: '14px', color: '#fff' }}>{b.customerName}</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>📞 {b.phone}</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>✉️ {b.email}</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>📍 {b.address}</div>
+                              </div>
+
+                              {/* Items */}
+                              <div>
+                                <div style={{ fontSize: '10px', color: 'var(--accent-cyan)', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '6px' }}>Rented Items</div>
+                                {(b.items || []).map((item, i) => (
+                                  <div key={i} style={{ fontSize: '12px', color: '#fff', marginBottom: '4px' }}>
+                                    🎮 {item.name} ({item.planLabel})<br />
+                                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{item.startDate} → {item.endDate}</span>
+                                  </div>
+                                ))}
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>🚚 {b.deliverySlot}</div>
+                              </div>
+
+                              {/* Bill Summary */}
+                              <div>
+                                <div style={{ fontSize: '10px', color: 'var(--accent-cyan)', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '6px' }}>Bill Summary</div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Payment: <strong style={{ color: '#fff' }}>{b.paymentMethod}</strong></div>
+                                {b.paymentDetails?.transactionId && (
+                                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Txn ID: {b.paymentDetails.transactionId}</div>
+                                )}
+                                {b.couponCode && (
+                                  <div style={{ fontSize: '11px', color: '#10b981' }}>Coupon: {b.couponCode} (-₹{b.discountAmount?.toFixed(2)})</div>
+                                )}
+                                <div style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--accent-cyan)', marginTop: '6px' }}>₹{b.totalAmount?.toFixed(2)}</div>
+                                <div style={{ fontSize: '10px', color: '#10b981' }}>✓ Paid & Verified</div>
+                              </div>
+                            </div>
+
+                            {/* Document Proofs */}
+                            {(b.selfie || b.identityID || b.signature) && (
+                              <div style={{ padding: '12px 20px', borderTop: '1px solid rgba(16,185,129,0.15)', display: 'flex', gap: '16px', alignItems: 'center' }}>
+                                <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>VERIFICATION DOCS:</span>
+                                {b.selfie && <span style={{ fontSize: '11px', color: '#10b981' }}>✅ Selfie</span>}
+                                {b.identityID && <span style={{ fontSize: '11px', color: '#10b981' }}>✅ ID Proof</span>}
+                                {b.signature && <span style={{ fontSize: '11px', color: '#10b981' }}>✅ E-Signature</span>}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </>
           )}
         </div>
@@ -6303,15 +6820,39 @@ export default function App() {
                     />
                   </div>
                   <div className="form-group">
-                    <label>Mobile Number (For SMS OTP)</label>
-                    <input 
-                      type="tel" 
-                      className="form-input" 
-                      placeholder="+91..."
-                      required 
-                      value={signupPhone}
-                      onChange={(e) => setSignupPhone(e.target.value)}
-                    />
+                    <label>Mobile Number</label>
+                    <div style={{ display: 'flex', marginTop: '4px', width: '100%' }}>
+                      <span style={{ 
+                        display: 'flex',
+                        alignItems: 'center',
+                        background: 'var(--bg-light-dark)', 
+                        border: '1px solid var(--border)', 
+                        borderRight: 'none', 
+                        borderTopLeftRadius: '8px', 
+                        borderBottomLeftRadius: '8px', 
+                        padding: '0 12px', 
+                        color: 'var(--accent-cyan)', 
+                        fontWeight: 'bold', 
+                        fontSize: '14px' 
+                      }}>+91</span>
+                      <input 
+                        type="tel" 
+                        className="form-input" 
+                        placeholder="98765 43210"
+                        required 
+                        style={{ 
+                          flex: 1, 
+                          borderTopLeftRadius: 0, 
+                          borderBottomLeftRadius: 0,
+                          marginTop: 0 
+                        }} 
+                        value={signupPhone.replace(/^\+91\s*/, '')}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                          setSignupPhone(val ? `+91 ${val}` : '');
+                        }}
+                      />
+                    </div>
                   </div>
                   <div className="form-group">
                     <label>Password</label>
@@ -6324,7 +6865,7 @@ export default function App() {
                     />
                   </div>
                   <button type="submit" className="form-submit-btn" style={{ width: '100%' }}>
-                    Verify Account
+                    Create Account
                   </button>
                 </form>
 
@@ -6878,6 +7419,174 @@ export default function App() {
                 </div>
               )}
 
+              {/* Tab 4b: Verified Documents & Bills */}
+              {clientTab === 'verified-docs' && (() => {
+                const approvedBookings = userBookings.filter(b => b.verificationStatus === 'Approved');
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {/* Header */}
+                    <div className="glass-panel" style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 'bold', margin: '0 0 4px 0', color: '#fff' }}>
+                          ✅ Verified Documents & Bills
+                        </h3>
+                        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
+                          Your admin-approved bookings with confirmed E-Bill invoices
+                        </p>
+                      </div>
+                      <button
+                        className="btn-clipboard"
+                        onClick={() => fetchUserBookings(userToken)}
+                        style={{ fontSize: '12px', margin: 0 }}
+                      >
+                        🔄 Refresh
+                      </button>
+                    </div>
+
+                    {approvedBookings.length === 0 ? (
+                      <div className="glass-panel" style={{ padding: '50px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '14px', alignItems: 'center' }}>
+                        <div style={{ fontSize: '40px' }}>📋</div>
+                        <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '14px' }}>No verified bookings yet.</p>
+                        <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '12px' }}>Once admin approves your documents, your confirmed bookings and bills will appear here.</p>
+                      </div>
+                    ) : (
+                      approvedBookings.map(b => (
+                        <div key={b.id} style={{ border: '1px solid rgba(0,229,255,0.25)', borderRadius: '14px', overflow: 'hidden', background: 'rgba(0,229,255,0.02)' }}>
+
+                          {/* Invoice Header */}
+                          <div style={{ background: 'linear-gradient(135deg, rgba(0,229,255,0.1), rgba(16,185,129,0.08))', padding: '16px 24px', borderBottom: '1px solid rgba(0,229,255,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+                              <span style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '15px', color: 'var(--accent-cyan)' }}>{b.id}</span>
+                              <span style={{ padding: '3px 10px', borderRadius: '20px', background: 'rgba(16,185,129,0.15)', color: '#10b981', fontSize: '10px', fontWeight: 'bold', border: '1px solid rgba(16,185,129,0.3)' }}>
+                                ✅ APPROVED & CONFIRMED
+                              </span>
+                            </div>
+                            <div style={{ textAlign: 'right', fontSize: '11px', color: 'var(--text-muted)' }}>
+                              <div>{new Date(b.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+                              <div>{new Date(b.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</div>
+                            </div>
+                          </div>
+
+                          {/* Invoice Body */}
+                          <div style={{ padding: '20px 24px', background: '#0a0d18' }}>
+                            {/* Elite PS Rentals Brand + Invoice Title */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '14px', marginBottom: '16px' }}>
+                              <div>
+                                <h4 style={{ fontFamily: 'var(--font-display)', color: 'var(--accent-cyan)', margin: '0 0 4px 0', fontSize: '16px' }}>Elite PS Rentals</h4>
+                                <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Vasai, Palghar, Maharashtra - 401201</span>
+                              </div>
+                              <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#fff' }}>E-BILL INVOICE</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Invoice ID: {b.id}</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Date: {new Date(b.createdAt).toLocaleDateString('en-IN')}</div>
+                              </div>
+                            </div>
+
+                            {/* Renter + Delivery */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '16px' }}>
+                              <div>
+                                <div style={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '6px', letterSpacing: '0.5px' }}>Renter Information</div>
+                                <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff' }}>{b.customerName}</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>📞 {b.phone}</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>✉️ {b.email}</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>📍 {b.address}</div>
+                              </div>
+                              <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '6px', letterSpacing: '0.5px' }}>Delivery Schedule</div>
+                                <div style={{ fontSize: '12px', color: '#fff' }}>Slot: <strong>{b.deliverySlot}</strong></div>
+                                {b.items?.[0] && (
+                                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                                    {b.items[0].startDate} → {b.items[0].endDate}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Items Table */}
+                            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '16px', fontSize: '12px' }}>
+                              <thead>
+                                <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+                                  <th style={{ textAlign: 'left', padding: '6px 0' }}>Rental Item</th>
+                                  <th style={{ textAlign: 'center', padding: '6px 0' }}>Plan</th>
+                                  <th style={{ textAlign: 'center', padding: '6px 0' }}>Dates</th>
+                                  <th style={{ textAlign: 'right', padding: '6px 0' }}>Amount</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(b.items || []).map((item, i) => (
+                                  <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                    <td style={{ padding: '8px 0', color: '#fff', fontWeight: '600' }}>🎮 {item.name} {item.quantity > 1 ? `(x${item.quantity})` : ''}</td>
+                                    <td style={{ textAlign: 'center', padding: '8px 0', color: 'var(--text-secondary)' }}>{item.planLabel}</td>
+                                    <td style={{ textAlign: 'center', padding: '8px 0', color: 'var(--text-secondary)' }}>{item.startDate} → {item.endDate}</td>
+                                    <td style={{ textAlign: 'right', padding: '8px 0', color: '#fff' }}>₹{((item.rate || 0) * (item.quantity || 1)).toFixed(2)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+
+                            {/* Totals + Payment */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontStyle: 'italic', maxWidth: '240px' }}>
+                                * Zero Deposit rental. Renter agrees to return equipment in original condition.
+                              </div>
+                              <div style={{ minWidth: '180px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-secondary)', margin: '3px 0' }}>
+                                  <span>Subtotal:</span>
+                                  <span>₹{(b.totalAmount ? (b.totalAmount - 149 - (b.discountAmount || 0)) / 1.18 : 0).toFixed(2)}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-secondary)', margin: '3px 0' }}>
+                                  <span>GST (18%):</span>
+                                  <span>₹{(b.totalAmount ? ((b.totalAmount - 149 - (b.discountAmount || 0)) / 1.18) * 0.18 : 0).toFixed(2)}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-secondary)', margin: '3px 0' }}>
+                                  <span>Delivery Fee:</span>
+                                  <span>₹149.00</span>
+                                </div>
+                                {(b.discountAmount || 0) > 0 && (
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#10b981', margin: '3px 0' }}>
+                                    <span>Discount {b.couponCode ? `(${b.couponCode})` : ''}:</span>
+                                    <span>-₹{(b.discountAmount || 0).toFixed(2)}</span>
+                                  </div>
+                                )}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderTop: '1px solid var(--border)', paddingTop: '6px', marginTop: '4px' }}>
+                                  <span style={{ color: '#fff' }}>Grand Total:</span>
+                                  <span style={{ color: 'var(--accent-cyan)', fontSize: '15px' }}>₹{(b.totalAmount || 0).toFixed(2)}</span>
+                                </div>
+                                <div style={{ fontSize: '10px', color: '#10b981', textAlign: 'right', marginTop: '3px' }}>
+                                  ✓ Paid via {b.paymentMethod}
+                                  {b.paymentDetails?.transactionId ? ` | Txn: ${b.paymentDetails.transactionId}` : ''}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Document Verification Status */}
+                            <div style={{ marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '14px', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+                              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Submitted Docs:</span>
+                              <span style={{ fontSize: '11px', color: b.selfie ? '#10b981' : '#ef4444' }}>{b.selfie ? '✅' : '❌'} Selfie</span>
+                              <span style={{ fontSize: '11px', color: b.identityID ? '#10b981' : '#ef4444' }}>{b.identityID ? '✅' : '❌'} ID Proof</span>
+                              <span style={{ fontSize: '11px', color: b.signature ? '#10b981' : '#ef4444' }}>{b.signature ? '✅' : '❌'} E-Signature</span>
+                              <div style={{ marginLeft: 'auto' }}>
+                                <button
+                                  className="btn-clipboard"
+                                  style={{ margin: 0, padding: '6px 14px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                  onClick={() => {
+                                    setCreatedBooking(b);
+                                    setCheckoutStep(4);
+                                    setView('checkout');
+                                  }}
+                                >
+                                  📄 View Full Receipt & Print
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* Tab 4: Profile & Password Change */}
               {clientTab === 'profile' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -7005,15 +7714,41 @@ export default function App() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                           <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Phone</span>
                           {isEditingProfile ? (
-                            <input 
-                              type="text" 
-                              className="form-input" 
-                              style={{ width: '250px', marginTop: '4px', padding: '6px 12px' }} 
-                              value={profilePhone} 
-                              onChange={(e) => setProfilePhone(e.target.value)} 
-                            />
+                            <div style={{ display: 'flex', marginTop: '4px', width: '250px' }}>
+                              <span style={{ 
+                                display: 'flex',
+                                alignItems: 'center',
+                                background: 'var(--bg-light-dark)', 
+                                border: '1px solid var(--border)', 
+                                borderRight: 'none', 
+                                borderTopLeftRadius: '8px', 
+                                borderBottomLeftRadius: '8px', 
+                                padding: '0 12px', 
+                                color: 'var(--accent-cyan)', 
+                                fontWeight: 'bold', 
+                                fontSize: '14px' 
+                              }}>+91</span>
+                              <input 
+                                type="text" 
+                                className="form-input" 
+                                placeholder="98765 43210"
+                                style={{ 
+                                  flex: 1, 
+                                  borderTopLeftRadius: 0, 
+                                  borderBottomLeftRadius: 0,
+                                  marginTop: 0 
+                                }} 
+                                value={profilePhone.replace(/^\+91\s*/, '')} 
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                  setProfilePhone(val ? `+91 ${val}` : '');
+                                }} 
+                              />
+                            </div>
                           ) : (
-                            <span style={{ fontSize: '15px', fontWeight: '500', color: '#fff' }}>{profilePhone || 'Not set'}</span>
+                            <span style={{ fontSize: '15px', fontWeight: '500', color: '#fff' }}>
+                              {profilePhone ? (profilePhone.startsWith('+91') ? profilePhone : `+91 ${profilePhone}`) : 'Not set'}
+                            </span>
                           )}
                         </div>
                       </div>
@@ -7030,11 +7765,19 @@ export default function App() {
                           <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Birthday</span>
                           {isEditingProfile ? (
                             <input 
-                              type="date" 
+                              type="text" 
                               className="form-input" 
-                              style={{ width: '250px', marginTop: '4px', padding: '6px 12px' }} 
+                              placeholder="Select Birthdate"
+                              readOnly
+                              onClick={() => {
+                                const initialDate = parseBirthdayDate(profileBirthday);
+                                setDpSelectedDate(initialDate);
+                                setDpCurrentMonth(initialDate.getMonth());
+                                setDpCurrentYear(initialDate.getFullYear());
+                                setShowDatePicker(true);
+                              }}
+                              style={{ width: '250px', marginTop: '4px', padding: '6px 12px', cursor: 'pointer' }} 
                               value={profileBirthday !== 'Not set' ? profileBirthday : ''} 
-                              onChange={(e) => setProfileBirthday(e.target.value || 'Not set')} 
                             />
                           ) : (
                             <span style={{ fontSize: '15px', fontWeight: '500', color: '#fff' }}>{profileBirthday}</span>
@@ -7095,7 +7838,8 @@ export default function App() {
                         display: 'flex', 
                         justifyContent: 'space-between', 
                         alignItems: 'center', 
-                        padding: '16px 20px'
+                        padding: '16px 20px',
+                        borderBottom: '1px solid var(--border)'
                       }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                           <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Work Address</span>
@@ -7112,29 +7856,215 @@ export default function App() {
                           )}
                         </div>
                       </div>
+
+                      {/* Row 10: Aadhaar Number */}
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        padding: '16px 20px',
+                        borderBottom: '1px solid var(--border)'
+                      }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Aadhaar Number</span>
+                          {isEditingProfile ? (
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              placeholder="e.g. 1234 5678 9012"
+                              style={{ width: '250px', marginTop: '4px', padding: '6px 12px' }} 
+                              value={profileAadhaarNumber} 
+                              onChange={(e) => setProfileAadhaarNumber(e.target.value)} 
+                            />
+                          ) : (
+                            <span style={{ fontSize: '15px', fontWeight: '500', color: '#fff' }}>{profileAadhaarNumber || 'Not set'}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Row 11: Alternate Phone */}
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        padding: '16px 20px',
+                        borderBottom: '1px solid var(--border)'
+                      }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Alternate Phone</span>
+                          {isEditingProfile ? (
+                            <div style={{ display: 'flex', marginTop: '4px', width: '250px' }}>
+                              <span style={{ 
+                                display: 'flex',
+                                alignItems: 'center',
+                                background: 'var(--bg-light-dark)', 
+                                border: '1px solid var(--border)', 
+                                borderRight: 'none', 
+                                borderTopLeftRadius: '8px', 
+                                borderBottomLeftRadius: '8px', 
+                                padding: '0 12px', 
+                                color: 'var(--accent-cyan)', 
+                                fontWeight: 'bold', 
+                                fontSize: '14px' 
+                              }}>+91</span>
+                              <input 
+                                type="text" 
+                                className="form-input" 
+                                placeholder="98765 43210"
+                                style={{ 
+                                  flex: 1, 
+                                  borderTopLeftRadius: 0, 
+                                  borderBottomLeftRadius: 0,
+                                  marginTop: 0 
+                                }} 
+                                value={profileAlternatePhone.replace(/^\+91\s*/, '')} 
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                  setProfileAlternatePhone(val ? `+91 ${val}` : '');
+                                }} 
+                              />
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: '15px', fontWeight: '500', color: '#fff' }}>
+                              {profileAlternatePhone ? (profileAlternatePhone.startsWith('+91') ? profileAlternatePhone : `+91 ${profileAlternatePhone}`) : 'Not set'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+
+
+                      {/* Row 14: City */}
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        padding: '16px 20px',
+                        borderBottom: '1px solid var(--border)'
+                      }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>City</span>
+                          {isEditingProfile ? (
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              placeholder="e.g. Pune"
+                              style={{ width: '250px', marginTop: '4px', padding: '6px 12px' }} 
+                              value={profileCity} 
+                              onChange={(e) => setProfileCity(e.target.value)} 
+                            />
+                          ) : (
+                            <span style={{ fontSize: '15px', fontWeight: '500', color: '#fff' }}>{profileCity || 'Not set'}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Row 15: State */}
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        padding: '16px 20px',
+                        borderBottom: '1px solid var(--border)'
+                      }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>State</span>
+                          {isEditingProfile ? (
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              placeholder="e.g. Maharashtra"
+                              style={{ width: '250px', marginTop: '4px', padding: '6px 12px' }} 
+                              value={profileState} 
+                              onChange={(e) => setProfileState(e.target.value)} 
+                            />
+                          ) : (
+                            <span style={{ fontSize: '15px', fontWeight: '500', color: '#fff' }}>{profileState || 'Not set'}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Row 16: Zip Code */}
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        padding: '16px 20px',
+                        borderBottom: '1px solid var(--border)'
+                      }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Zip Code</span>
+                          {isEditingProfile ? (
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              placeholder="e.g. 411001"
+                              style={{ width: '250px', marginTop: '4px', padding: '6px 12px' }} 
+                              value={profileZipCode} 
+                              onChange={(e) => setProfileZipCode(e.target.value)} 
+                            />
+                          ) : (
+                            <span style={{ fontSize: '15px', fontWeight: '500', color: '#fff' }}>{profileZipCode || 'Not set'}</span>
+                          )}
+                        </div>
+                      </div>
+
+
+
+                      {/* Row 18: Company Name */}
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        padding: '16px 20px'
+                      }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Company Name</span>
+                          {isEditingProfile ? (
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              placeholder="e.g. TechCorp"
+                              style={{ width: '250px', marginTop: '4px', padding: '6px 12px' }} 
+                              value={profileCompanyName} 
+                              onChange={(e) => setProfileCompanyName(e.target.value)} 
+                            />
+                          ) : (
+                            <span style={{ fontSize: '15px', fontWeight: '500', color: '#fff' }}>{profileCompanyName || 'Not set'}</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
 
                     {/* Edit Profile Action Buttons */}
                     <div style={{ display: 'flex', gap: '10px', marginTop: '20px', justifyContent: 'flex-end' }}>
                       {isEditingProfile ? (
                         <>
-                          <button 
-                            className="btn-clipboard" 
-                            style={{ margin: 0 }}
-                            onClick={() => {
-                              setIsEditingProfile(false);
-                              // Reset fields to userProfile values
-                              setProfileName(userProfile.name || '');
-                              setProfilePhone(userProfile.phone || '');
-                              setProfileGender(userProfile.gender || 'Prefer not to say');
-                              setProfileBirthday(userProfile.birthday || 'Not set');
-                              setProfileLanguage(userProfile.language || 'English (United States)');
-                              setProfileHomeAddress(userProfile.homeAddress || 'Not set');
-                              setProfileWorkAddress(userProfile.workAddress || 'Not set');
-                            }}
-                          >
-                            Cancel
-                          </button>
+                          {!isProfileIncomplete && (
+                            <button 
+                              className="btn-clipboard" 
+                              style={{ margin: 0 }}
+                              onClick={() => {
+                                setIsEditingProfile(false);
+                                // Reset fields to userProfile values
+                                setProfileName(userProfile.name || '');
+                                setProfilePhone(userProfile.phone || '');
+                                setProfileGender(userProfile.gender || 'Prefer not to say');
+                                setProfileBirthday(userProfile.birthday || 'Not set');
+                                setProfileLanguage(userProfile.language || 'English (United States)');
+                                setProfileHomeAddress(userProfile.homeAddress || 'Not set');
+                                setProfileWorkAddress(userProfile.workAddress || 'Not set');
+                                setProfileAadhaarNumber(userProfile.aadhaarNumber || '');
+                                setProfileAlternatePhone(userProfile.alternatePhone || '');
+                                setProfileCity(userProfile.city || '');
+                                setProfileState(userProfile.state || '');
+                                setProfileZipCode(userProfile.zipCode || '');
+                                setProfileCompanyName(userProfile.companyName || '');
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          )}
                           <button 
                             className="btn-rent-now" 
                             style={{ margin: 0, width: 'auto', padding: '8px 20px' }}
@@ -7156,184 +8086,38 @@ export default function App() {
                   </div>
 
                   {/* Change Password Card */}
-                  <div className="glass-panel" style={{ padding: '24px' }}>
-                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 'bold', marginBottom: '8px', color: '#fff' }}>
-                      Change Password
-                    </h3>
-                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px' }}>
-                      Update your account security password. {userProfile?.isGoogle && "Since you logged in with Google, you can set a password for password-based logins."}
-                    </p>
+                  {!isEditingProfile && (
+                    <div className="glass-panel" style={{ padding: '24px' }}>
+                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 'bold', marginBottom: '8px', color: '#fff' }}>
+                        Change Password
+                      </h3>
+                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px' }}>
+                        Update your account security password. {userProfile?.isGoogle && "Since you logged in with Google, you can set a password for password-based logins."}
+                      </p>
 
-                    {!showInlineForgot ? (
-                      <>
-                        <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxWidth: '400px' }}>
-                          {!userProfile?.isGoogle && (
-                            <div className="form-group">
-                              <label>Current Password</label>
-                              <input
-                                type="password"
-                                className="form-input"
-                                required
-                                value={currPassword}
-                                onChange={(e) => setCurrPassword(e.target.value)}
-                              />
-                            </div>
-                          )}
-                          <div className="form-group">
-                            <label>New Password</label>
-                            <input
-                              type="password"
-                              className="form-input"
-                              required
-                              value={newPasswordVal}
-                              onChange={(e) => setNewPasswordVal(e.target.value)}
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label>Confirm New Password</label>
-                            <input
-                              type="password"
-                              className="form-input"
-                              required
-                              value={confirmNewPasswordVal}
-                              onChange={(e) => setConfirmNewPasswordVal(e.target.value)}
-                            />
-                          </div>
-                          <button type="submit" className="form-submit-btn" style={{ width: 'auto', alignSelf: 'flex-start', padding: '10px 24px' }}>
-                            Change Password
-                          </button>
-                        </form>
-
-                        {/* Forgot password link */}
-                        <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
-                          <button
-                            type="button"
-                            style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer', fontSize: '13px', fontWeight: '600', textDecoration: 'underline', padding: 0 }}
-                            onClick={() => { setShowInlineForgot(true); setInlineForgotStep(1); setInlineForgotPhone(''); setInlineForgotOtp(''); setInlineForgotNewPass(''); setInlineForgotConfirm(''); setInlineDevOtp(''); }}
-                          >
-                            🔑 Forgot your password? Reset via Phone OTP
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <div style={{ maxWidth: '400px' }}>
-                        {/* Step indicator */}
-                        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
-                          {['Enter Phone', 'Verify OTP', 'New Password'].map((s, i) => (
-                            <div key={s} style={{ flex: 1, textAlign: 'center' }}>
-                              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: inlineForgotStep > i ? 'var(--accent-cyan)' : inlineForgotStep === i + 1 ? 'rgba(0,229,255,0.3)' : 'var(--bg-light-dark)', border: `2px solid ${inlineForgotStep >= i + 1 ? 'var(--accent-cyan)' : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px', fontSize: '11px', fontWeight: 'bold', color: inlineForgotStep > i ? '#000' : inlineForgotStep === i + 1 ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>
-                                {inlineForgotStep > i ? '✓' : i + 1}
-                              </div>
-                              <span style={{ fontSize: '9px', color: inlineForgotStep === i + 1 ? 'var(--accent-cyan)' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{s}</span>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Step 1: Enter Phone */}
-                        {inlineForgotStep === 1 && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Enter the phone number linked to your account. We'll send a 6-digit OTP.</p>
-                            <div className="form-group">
-                              <label>Registered Phone Number</label>
-                              <input
-                                type="tel"
-                                className="form-input"
-                                placeholder="e.g. 9876543210"
-                                value={inlineForgotPhone}
-                                onChange={(e) => setInlineForgotPhone(e.target.value)}
-                              />
-                            </div>
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                              <button
-                                type="button"
-                                className="btn-clipboard"
-                                style={{ margin: 0 }}
-                                onClick={() => setShowInlineForgot(false)}
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="button"
-                                className="form-submit-btn"
-                                style={{ flex: 1 }}
-                                disabled={isSubmitting}
-                                onClick={async () => {
-                                  if (!inlineForgotPhone.trim()) { showToast('Please enter your phone number.', 'error'); return; }
-                                  setIsSubmitting(true);
-                                  try {
-                                    const res = await fetch(`${API}/api/auth/forgot-password-phone`, {
-                                      method: 'POST',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ phone: inlineForgotPhone.trim() })
-                                    });
-                                    const data = await res.json();
-                                    if (res.ok && data.success) {
-                                      showToast(data.message);
-                                      if (data.devOtp) setInlineDevOtp(data.devOtp);
-                                      setInlineForgotStep(2);
-                                    } else {
-                                      showToast(data.message || 'Phone not found.', 'error');
-                                    }
-                                  } catch { showToast('Network error.', 'error'); }
-                                  finally { setIsSubmitting(false); }
-                                }}
-                              >
-                                {isSubmitting ? 'Sending OTP...' : 'Send OTP'}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Step 2: Enter OTP */}
-                        {inlineForgotStep === 2 && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Enter the 6-digit OTP sent to your phone.</p>
-                            {inlineDevOtp && (
-                              <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#f59e0b' }}>
-                                ⚠️ Dev Mode OTP: <strong style={{ fontSize: '16px', letterSpacing: '2px' }}>{inlineDevOtp}</strong>
+                      {!showInlineForgot ? (
+                        <>
+                          <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxWidth: '400px' }}>
+                            {!userProfile?.isGoogle && (
+                              <div className="form-group">
+                                <label>Current Password</label>
+                                <input
+                                  type="password"
+                                  className="form-input"
+                                  required
+                                  value={currPassword}
+                                  onChange={(e) => setCurrPassword(e.target.value)}
+                                />
                               </div>
                             )}
-                            <div className="form-group">
-                              <label>6-Digit OTP Code</label>
-                              <input
-                                type="text"
-                                className="form-input"
-                                placeholder="e.g. 483920"
-                                maxLength={6}
-                                value={inlineForgotOtp}
-                                onChange={(e) => setInlineForgotOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                              />
-                            </div>
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                              <button type="button" className="btn-clipboard" style={{ margin: 0 }} onClick={() => setInlineForgotStep(1)}>← Back</button>
-                              <button
-                                type="button"
-                                className="form-submit-btn"
-                                style={{ flex: 1 }}
-                                disabled={isSubmitting || inlineForgotOtp.length < 6}
-                                onClick={() => {
-                                  setInlineForgotResetToken(inlineForgotOtp);
-                                  setInlineForgotStep(3);
-                                }}
-                              >
-                                Verify OTP
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Step 3: Set New Password */}
-                        {inlineForgotStep === 3 && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>OTP verified! Set your new password below.</p>
                             <div className="form-group">
                               <label>New Password</label>
                               <input
                                 type="password"
                                 className="form-input"
-                                placeholder="At least 6 characters"
-                                value={inlineForgotNewPass}
-                                onChange={(e) => setInlineForgotNewPass(e.target.value)}
+                                required
+                                value={newPasswordVal}
+                                onChange={(e) => setNewPasswordVal(e.target.value)}
                               />
                             </div>
                             <div className="form-group">
@@ -7341,49 +8125,221 @@ export default function App() {
                               <input
                                 type="password"
                                 className="form-input"
-                                placeholder="Repeat new password"
-                                value={inlineForgotConfirm}
-                                onChange={(e) => setInlineForgotConfirm(e.target.value)}
+                                required
+                                value={confirmNewPasswordVal}
+                                onChange={(e) => setConfirmNewPasswordVal(e.target.value)}
                               />
                             </div>
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                              <button type="button" className="btn-clipboard" style={{ margin: 0 }} onClick={() => setInlineForgotStep(2)}>← Back</button>
-                              <button
-                                type="button"
-                                className="form-submit-btn"
-                                style={{ flex: 1 }}
-                                disabled={isSubmitting}
-                                onClick={async () => {
-                                  if (inlineForgotNewPass !== inlineForgotConfirm) { showToast('Passwords do not match.', 'error'); return; }
-                                  if (inlineForgotNewPass.length < 6) { showToast('Password must be at least 6 characters.', 'error'); return; }
-                                  setIsSubmitting(true);
-                                  try {
-                                    const res = await fetch(`${API}/api/auth/reset-password`, {
-                                      method: 'POST',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ token: inlineForgotResetToken, password: inlineForgotNewPass })
-                                    });
-                                    const data = await res.json();
-                                    if (res.ok && data.success) {
-                                      showToast('Password reset successfully! Please log in again.');
-                                      setShowInlineForgot(false);
-                                      setInlineForgotStep(1);
-                                      handleUserLogout();
-                                    } else {
-                                      showToast(data.message || 'Reset failed. OTP may have expired.', 'error');
-                                    }
-                                  } catch { showToast('Network error.', 'error'); }
-                                  finally { setIsSubmitting(false); }
-                                }}
-                              >
-                                {isSubmitting ? 'Resetting...' : 'Reset Password'}
-                              </button>
-                            </div>
+                            <button type="submit" className="form-submit-btn" style={{ width: 'auto', alignSelf: 'flex-start', padding: '10px 24px' }}>
+                              Change Password
+                            </button>
+                          </form>
+
+                          {/* Forgot password link */}
+                          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+                            <button
+                              type="button"
+                              style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer', fontSize: '13px', fontWeight: '600', textDecoration: 'underline', padding: 0 }}
+                              onClick={() => { setShowInlineForgot(true); setInlineForgotStep(1); setInlineForgotPhone(''); setInlineForgotOtp(''); setInlineForgotNewPass(''); setInlineForgotConfirm(''); setInlineDevOtp(''); }}
+                            >
+                              🔑 Forgot your password? Reset via Phone OTP
+                            </button>
                           </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                        </>
+                      ) : (
+                        <div style={{ maxWidth: '400px' }}>
+                          {/* Step indicator */}
+                          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+                            {['Enter Phone', 'Verify OTP', 'New Password'].map((s, i) => (
+                              <div key={s} style={{ flex: 1, textAlign: 'center' }}>
+                                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: inlineForgotStep > i ? 'var(--accent-cyan)' : inlineForgotStep === i + 1 ? 'rgba(0,229,255,0.3)' : 'var(--bg-light-dark)', border: `2px solid ${inlineForgotStep >= i + 1 ? 'var(--accent-cyan)' : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px', fontSize: '11px', fontWeight: 'bold', color: inlineForgotStep > i ? '#000' : inlineForgotStep === i + 1 ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>
+                                  {inlineForgotStep > i ? '✓' : i + 1}
+                                </div>
+                                <span style={{ fontSize: '9px', color: inlineForgotStep === i + 1 ? 'var(--accent-cyan)' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{s}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Step 1: Enter Phone */}
+                          {inlineForgotStep === 1 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                              <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Enter the phone number linked to your account. We'll send a 6-digit OTP.</p>
+                              <div className="form-group">
+                                <label>Registered Phone Number</label>
+                                <div style={{ display: 'flex', marginTop: '4px', width: '100%' }}>
+                                  <span style={{ 
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    background: 'var(--bg-light-dark)', 
+                                    border: '1px solid var(--border)', 
+                                    borderRight: 'none', 
+                                    borderTopLeftRadius: '8px', 
+                                    borderBottomLeftRadius: '8px', 
+                                    padding: '0 12px', 
+                                    color: 'var(--accent-cyan)', 
+                                    fontWeight: 'bold', 
+                                    fontSize: '14px' 
+                                  }}>+91</span>
+                                  <input
+                                    type="tel"
+                                    className="form-input"
+                                    placeholder="98765 43210"
+                                    style={{ 
+                                      flex: 1, 
+                                      borderTopLeftRadius: 0, 
+                                      borderBottomLeftRadius: 0,
+                                      marginTop: 0 
+                                    }} 
+                                    value={inlineForgotPhone.replace(/^\+91\s*/, '')}
+                                    onChange={(e) => {
+                                      const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                      setInlineForgotPhone(val ? `+91 ${val}` : '');
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', gap: '10px' }}>
+                                <button
+                                  type="button"
+                                  className="btn-clipboard"
+                                  style={{ margin: 0 }}
+                                  onClick={() => setShowInlineForgot(false)}
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  className="form-submit-btn"
+                                  style={{ flex: 1 }}
+                                  disabled={isSubmitting}
+                                  onClick={async () => {
+                                    if (!inlineForgotPhone.trim()) { showToast('Please enter your phone number.', 'error'); return; }
+                                    setIsSubmitting(true);
+                                    try {
+                                      const res = await fetch(`${API}/api/auth/forgot-password-phone`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ phone: inlineForgotPhone.trim() })
+                                      });
+                                      const data = await res.json();
+                                      if (res.ok && data.success) {
+                                        showToast(data.message);
+                                        if (data.devOtp) setInlineDevOtp(data.devOtp);
+                                        setInlineForgotStep(2);
+                                      } else {
+                                        showToast(data.message || 'Phone not found.', 'error');
+                                      }
+                                    } catch { showToast('Network error.', 'error'); }
+                                    finally { setIsSubmitting(false); }
+                                  }}
+                                >
+                                  {isSubmitting ? 'Sending OTP...' : 'Send OTP'}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Step 2: Enter OTP */}
+                          {inlineForgotStep === 2 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                              <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Enter the 6-digit OTP sent to your phone.</p>
+                              {inlineDevOtp && (
+                                <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#f59e0b' }}>
+                                  ⚠️ Dev Mode OTP: <strong style={{ fontSize: '16px', letterSpacing: '2px' }}>{inlineDevOtp}</strong>
+                                </div>
+                              )}
+                              <div className="form-group">
+                                <label>6-Digit OTP Code</label>
+                                <input
+                                  type="text"
+                                  className="form-input"
+                                  placeholder="e.g. 483920"
+                                  maxLength={6}
+                                  value={inlineForgotOtp}
+                                  onChange={(e) => setInlineForgotOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                />
+                              </div>
+                              <div style={{ display: 'flex', gap: '10px' }}>
+                                <button type="button" className="btn-clipboard" style={{ margin: 0 }} onClick={() => setInlineForgotStep(1)}>← Back</button>
+                                <button
+                                  type="button"
+                                  className="form-submit-btn"
+                                  style={{ flex: 1 }}
+                                  disabled={isSubmitting || inlineForgotOtp.length < 6}
+                                  onClick={() => {
+                                    setInlineForgotResetToken(inlineForgotOtp);
+                                    setInlineForgotStep(3);
+                                  }}
+                                >
+                                  Verify OTP
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Step 3: Set New Password */}
+                          {inlineForgotStep === 3 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                              <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>OTP verified! Set your new password below.</p>
+                              <div className="form-group">
+                                <label>New Password</label>
+                                <input
+                                  type="password"
+                                  className="form-input"
+                                  placeholder="At least 6 characters"
+                                  value={inlineForgotNewPass}
+                                  onChange={(e) => setInlineForgotNewPass(e.target.value)}
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label>Confirm New Password</label>
+                                <input
+                                  type="password"
+                                  className="form-input"
+                                  placeholder="Repeat new password"
+                                  value={inlineForgotConfirm}
+                                  onChange={(e) => setInlineForgotConfirm(e.target.value)}
+                                />
+                              </div>
+                              <div style={{ display: 'flex', gap: '10px' }}>
+                                <button type="button" className="btn-clipboard" style={{ margin: 0 }} onClick={() => setInlineForgotStep(2)}>← Back</button>
+                                <button
+                                  type="button"
+                                  className="form-submit-btn"
+                                  style={{ flex: 1 }}
+                                  disabled={isSubmitting}
+                                  onClick={async () => {
+                                    if (inlineForgotNewPass !== inlineForgotConfirm) { showToast('Passwords do not match.', 'error'); return; }
+                                    if (inlineForgotNewPass.length < 6) { showToast('Password must be at least 6 characters.', 'error'); return; }
+                                    setIsSubmitting(true);
+                                    try {
+                                      const res = await fetch(`${API}/api/auth/reset-password`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ token: inlineForgotResetToken, password: inlineForgotNewPass })
+                                      });
+                                      const data = await res.json();
+                                      if (res.ok && data.success) {
+                                        showToast('Password reset successfully! Please log in again.');
+                                        setShowInlineForgot(false);
+                                        setInlineForgotStep(1);
+                                        handleUserLogout();
+                                      } else {
+                                        showToast(data.message || 'Reset failed. OTP may have expired.', 'error');
+                                      }
+                                    } catch { showToast('Network error.', 'error'); }
+                                    finally { setIsSubmitting(false); }
+                                  }}
+                                >
+                                  {isSubmitting ? 'Resetting...' : 'Reset Password'}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -7454,10 +8410,10 @@ export default function App() {
             <div>
               <h4 className="footer-col-title">Company Info</h4>
               <ul className="footer-links">
-                <li><a href="#">About Us</a></li>
-                <li><a href="#">Rental Agreement Terms</a></li>
-                <li><a href="#">Verification FAQ</a></li>
-                <li><a href="#">Privacy Policy</a></li>
+                <li><a href="#" onClick={(e) => { e.preventDefault(); setView('about'); window.scrollTo(0, 0); }}>About Us</a></li>
+                <li><a href="#" onClick={(e) => { e.preventDefault(); setView('agreement-terms'); window.scrollTo(0, 0); }}>Rental Agreement Terms</a></li>
+                <li><a href="#" onClick={(e) => { e.preventDefault(); setView('verification-faq'); window.scrollTo(0, 0); }}>Verification FAQ</a></li>
+                <li><a href="#" onClick={(e) => { e.preventDefault(); setView('privacy-policy'); window.scrollTo(0, 0); }}>Privacy Policy</a></li>
               </ul>
             </div>
 
@@ -7812,6 +8768,263 @@ export default function App() {
             >
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {showDatePicker && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(5, 7, 15, 0.85)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '20px'
+        }}>
+          <div className="glass-panel" style={{
+            maxWidth: '320px',
+            width: '100%',
+            padding: 0,
+            overflow: 'hidden',
+            border: '1px solid var(--border)',
+            background: '#111827',
+            display: 'flex',
+            flexDirection: 'column',
+            borderRadius: '16px',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)'
+          }}>
+            {/* Header displaying selected date */}
+            <div style={{
+              padding: '20px',
+              background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-blue))',
+              color: '#000',
+              textAlign: 'left'
+            }}>
+              <div style={{ fontSize: '12px', fontWeight: '600', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px' }}>
+                {dpSelectedDate.getFullYear()}
+              </div>
+              <div style={{ fontSize: '24px', fontWeight: '800', marginTop: '4px' }}>
+                {(() => {
+                  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                  const monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                  return `${days[dpSelectedDate.getDay()]}, ${dpSelectedDate.getDate()} ${monthsShort[dpSelectedDate.getMonth()]}`;
+                })()}
+              </div>
+            </div>
+
+            {/* Calendar Body */}
+            <div style={{ padding: '16px' }}>
+              {/* Navigation (Month & Year selectors) */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    let nextMonth = dpCurrentMonth - 1;
+                    let nextYear = dpCurrentYear;
+                    if (nextMonth < 0) {
+                      nextMonth = 11;
+                      nextYear -= 1;
+                    }
+                    setDpCurrentMonth(nextMonth);
+                    setDpCurrentYear(nextYear);
+                    setDpSelectedDate(prev => {
+                      const day = prev.getDate();
+                      const maxDays = new Date(nextYear, nextMonth + 1, 0).getDate();
+                      const safeDay = Math.min(day, maxDays);
+                      return new Date(nextYear, nextMonth, safeDay);
+                    });
+                  }} 
+                  style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '18px', fontWeight: 'bold', padding: '0 8px' }}
+                >
+                  &lt;
+                </button>
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <select 
+                    value={dpCurrentMonth} 
+                    onChange={(e) => {
+                      const newMonth = parseInt(e.target.value, 10);
+                      setDpCurrentMonth(newMonth);
+                      setDpSelectedDate(prev => {
+                        const day = prev.getDate();
+                        const year = prev.getFullYear();
+                        const maxDays = new Date(year, newMonth + 1, 0).getDate();
+                        const safeDay = Math.min(day, maxDays);
+                        return new Date(year, newMonth, safeDay);
+                      });
+                    }}
+                    style={{ background: '#1e293b', color: '#fff', border: '1px solid var(--border)', borderRadius: '6px', padding: '4px 8px', fontSize: '13px', cursor: 'pointer' }}
+                  >
+                    {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, idx) => (
+                      <option key={m} value={idx}>{m}</option>
+                    ))}
+                  </select>
+
+                  <select 
+                    value={dpCurrentYear} 
+                    onChange={(e) => {
+                      const newYear = parseInt(e.target.value, 10);
+                      setDpCurrentYear(newYear);
+                      setDpSelectedDate(prev => {
+                        const day = prev.getDate();
+                        const month = prev.getMonth();
+                        const maxDays = new Date(newYear, month + 1, 0).getDate();
+                        const safeDay = Math.min(day, maxDays);
+                        return new Date(newYear, month, safeDay);
+                      });
+                    }}
+                    style={{ background: '#1e293b', color: '#fff', border: '1px solid var(--border)', borderRadius: '6px', padding: '4px 8px', fontSize: '13px', cursor: 'pointer' }}
+                  >
+                    {(() => {
+                      const yearsList = [];
+                      const currentYearNum = new Date().getFullYear();
+                      for (let y = currentYearNum; y >= currentYearNum - 100; y--) {
+                        yearsList.push(y);
+                      }
+                      return yearsList.map(y => (
+                        <option key={y} value={y}>{y}</option>
+                      ));
+                    })()}
+                  </select>
+                </div>
+
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    let nextMonth = dpCurrentMonth + 1;
+                    let nextYear = dpCurrentYear;
+                    if (nextMonth > 11) {
+                      nextMonth = 0;
+                      nextYear += 1;
+                    }
+                    setDpCurrentMonth(nextMonth);
+                    setDpCurrentYear(nextYear);
+                    setDpSelectedDate(prev => {
+                      const day = prev.getDate();
+                      const maxDays = new Date(nextYear, nextMonth + 1, 0).getDate();
+                      const safeDay = Math.min(day, maxDays);
+                      return new Date(nextYear, nextMonth, safeDay);
+                    });
+                  }} 
+                  style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '18px', fontWeight: 'bold', padding: '0 8px' }}
+                >
+                  &gt;
+                </button>
+              </div>
+
+              {/* Weekday headers */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center', marginBottom: '8px' }}>
+                {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, idx) => (
+                  <span key={idx} style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 'bold' }}>{day}</span>
+                ))}
+              </div>
+
+              {/* Days grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', justifyItems: 'center' }}>
+                {(() => {
+                  const totalDays = new Date(dpCurrentYear, dpCurrentMonth + 1, 0).getDate();
+                  let startDay = new Date(dpCurrentYear, dpCurrentMonth, 1).getDay();
+                  startDay = startDay === 0 ? 6 : startDay - 1; // Mon-start conversion (Mon=0... Sun=6)
+
+                  const cells = [];
+                  // Empty slots
+                  for (let e = 0; e < startDay; e++) {
+                    cells.push(<div key={`empty-${e}`} style={{ width: '32px', height: '32px' }} />);
+                  }
+                  // Month days
+                  for (let d = 1; d <= totalDays; d++) {
+                    const isSelected = dpSelectedDate.getDate() === d &&
+                                      dpSelectedDate.getMonth() === dpCurrentMonth &&
+                                      dpSelectedDate.getFullYear() === dpCurrentYear;
+                    cells.push(
+                      <button
+                        type="button"
+                        key={`day-${d}`}
+                        onClick={() => setDpSelectedDate(new Date(dpCurrentYear, dpCurrentMonth, d))}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          border: 'none',
+                          background: isSelected ? 'var(--accent-cyan)' : 'none',
+                          color: isSelected ? '#000' : '#fff',
+                          fontSize: '12px',
+                          fontWeight: isSelected ? 'bold' : 'normal',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        {d}
+                      </button>
+                    );
+                  }
+                  return cells;
+                })()}
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '12px',
+              padding: '12px 16px',
+              borderTop: '1px solid var(--border)',
+              background: 'rgba(255,255,255,0.01)'
+            }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileBirthday('Not set');
+                  setShowDatePicker(false);
+                }}
+                style={{ background: 'none', border: 'none', color: '#ef4444', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer', padding: '6px 12px' }}
+              >
+                CLEAR
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDatePicker(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer', padding: '6px 12px' }}
+              >
+                CANCEL
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const day = String(dpSelectedDate.getDate()).padStart(2, '0');
+                  const month = String(dpSelectedDate.getMonth() + 1).padStart(2, '0');
+                  const year = dpSelectedDate.getFullYear();
+                  
+                  // Age check: must be at least 18
+                  const today = new Date();
+                  let age = today.getFullYear() - dpSelectedDate.getFullYear();
+                  const m = today.getMonth() - dpSelectedDate.getMonth();
+                  if (m < 0 || (m === 0 && today.getDate() < dpSelectedDate.getDate())) {
+                    age--;
+                  }
+                  if (age < 18) {
+                    showToast('You must be at least 18 years old.', 'error');
+                    return;
+                  }
+
+                  setProfileBirthday(`${day}-${month}-${year}`);
+                  setShowDatePicker(false);
+                }}
+                style={{ background: 'none', border: '1px solid var(--accent-cyan)', color: 'var(--accent-cyan)', borderRadius: '6px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer', padding: '6px 12px' }}
+              >
+                SET
+              </button>
+            </div>
           </div>
         </div>
       )}

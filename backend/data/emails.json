@@ -1,5 +1,85 @@
 [
   {
+    "id": "EML-660028",
+    "to": "bhavyadavane1409@gmail.com",
+    "subject": "Rental Agreement Approved - EPB-506922",
+    "body": "Hi Bhavya,\n\nYour signed rental agreement for Booking EPB-506922 has been verified and approved by the Elite PS Rentals compliance team.",
+    "userId": "U1779609327124",
+    "createdAt": "2026-06-02T21:26:48.879Z"
+  },
+  {
+    "id": "EML-462981",
+    "to": "bhavyadavane1409@gmail.com",
+    "subject": "Booking Confirmed - EPB-506922",
+    "body": "Hi Bhavya,\n\nWe are pleased to inform you that your booking EPB-506922 has been confirmed. Your gaming setup will be delivered as per the selected slot:\n\nDelivery Slot: 2:00 PM - 4:00 PM\n\nHappy Gaming!",
+    "userId": "U1779609327124",
+    "createdAt": "2026-06-02T21:26:48.876Z"
+  },
+  {
+    "id": "EML-514981",
+    "to": "bhavyadavane1409@gmail.com",
+    "subject": "Rental Agreement Approved - EPB-523720",
+    "body": "Hi Bhavya,\n\nYour signed rental agreement for Booking EPB-523720 has been verified and approved by the Elite PS Rentals compliance team.",
+    "userId": "U1779609327124",
+    "createdAt": "2026-06-02T21:26:40.729Z"
+  },
+  {
+    "id": "EML-573186",
+    "to": "bhavyadavane1409@gmail.com",
+    "subject": "Booking Confirmed - EPB-523720",
+    "body": "Hi Bhavya,\n\nWe are pleased to inform you that your booking EPB-523720 has been confirmed. Your gaming setup will be delivered as per the selected slot:\n\nDelivery Slot: 2:00 PM - 4:00 PM\n\nHappy Gaming!",
+    "userId": "U1779609327124",
+    "createdAt": "2026-06-02T21:26:40.727Z"
+  },
+  {
+    "id": "EML-626812",
+    "to": "bhavyadavane1409@gmail.com",
+    "subject": "Rental Agreement Approved - EPB-617408",
+    "body": "Hi Bhavya,\n\nYour signed rental agreement for Booking EPB-617408 has been verified and approved by the Elite PS Rentals compliance team.",
+    "userId": "U1779609327124",
+    "createdAt": "2026-06-02T21:09:37.814Z"
+  },
+  {
+    "id": "EML-299563",
+    "to": "bhavyadavane1409@gmail.com",
+    "subject": "Booking Confirmed - EPB-617408",
+    "body": "Hi Bhavya,\n\nWe are pleased to inform you that your booking EPB-617408 has been confirmed. Your gaming setup will be delivered as per the selected slot:\n\nDelivery Slot: 2:00 PM - 4:00 PM\n\nHappy Gaming!",
+    "userId": "U1779609327124",
+    "createdAt": "2026-06-02T21:09:37.810Z"
+  },
+  {
+    "id": "EML-915723",
+    "to": "bhavyadavane1409@gmail.com",
+    "subject": "Payment Successful - EPB-617408",
+    "body": "Hi Bhavya,\n\nWe have successfully received your payment of ₹7609 via UPI.\n\nTransaction details have been updated. Please verify your identity and sign the agreement to finalize your booking.\n\nThank you for choosing Elite PS Rentals!",
+    "userId": "U1779609327124",
+    "createdAt": "2026-06-02T21:08:27.288Z"
+  },
+  {
+    "id": "EML-541783",
+    "to": "bhavyadavane1409@gmail.com",
+    "subject": "Booking Placed Successfully - EPB-617408",
+    "body": "Hi Bhavya,\n\nYour rental booking has been placed successfully!\n\nBooking ID: EPB-617408\nItems: PlayStation 5 Console (Standard Edition) (1x)\nTotal Amount: ₹7609\nDelivery Date/Slot: 2:00 PM - 4:00 PM\n\nStatus: Booked\nPayment Status: Paid\n\nPlease complete your verification to confirm the booking.\n\nHappy Gaming!\n- Elite PS Rentals",
+    "userId": "U1779609327124",
+    "createdAt": "2026-06-02T21:08:27.284Z"
+  },
+  {
+    "id": "EML-558982",
+    "to": "devyani1@gmail.com",
+    "subject": "Welcome to Elite PS Rentals!",
+    "body": "Hi BCde,\n\nYour account has been created successfully!\n\nYou can now log in, book PS5 consoles and VR setups, and enjoy premium gaming.\n\nHappy Gaming!\n- The Elite PS Rentals Team",
+    "userId": null,
+    "createdAt": "2026-06-02T20:05:13.041Z"
+  },
+  {
+    "id": "EML-141195",
+    "to": "devyani@gmail.com",
+    "subject": "Welcome to Elite PS Rentals!",
+    "body": "Hi PQR,\n\nYour account has been created successfully!\n\nYou can now log in, book PS5 consoles and VR setups, and enjoy premium gaming.\n\nHappy Gaming!\n- The Elite PS Rentals Team",
+    "userId": null,
+    "createdAt": "2026-06-02T19:50:27.838Z"
+  },
+  {
     "id": "EML-220934",
     "to": "bhavyadavane1409@gmail.com",
     "subject": "Password Reset OTP - Elite PS Rentals",

@@ -17,6 +17,7 @@ app.use(cors({
     'https://psrentals-abb93.web.app',
     'https://psrentals-abb93.firebaseapp.com',
     'http://localhost:5173',
+    'http://localhost:5174',
     'http://localhost:3000'
   ],
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -123,9 +124,37 @@ const tempSignups = {};
 function logVerification(type, email, phone, details) {
   try {
     const logs = db.getVerificationLogs();
+    
+    let resolvedType = 'phone';
+    let resolvedAction = 'failed';
+    
+    if (type === 'email_verified') {
+      resolvedType = 'email';
+      resolvedAction = 'verified';
+    } else if (type === 'phone_verified') {
+      resolvedType = 'phone';
+      resolvedAction = 'verified';
+    } else if (type === 'failed_otp_attempt') {
+      resolvedType = (details && details.toLowerCase().includes('email')) ? 'email' : 'phone';
+      resolvedAction = 'failed';
+    } else if (type === 'suspicious_activity') {
+      resolvedType = 'security';
+      resolvedAction = 'failed';
+    } else if (type === 'manual_approved') {
+      resolvedType = 'manual';
+      resolvedAction = 'success';
+    } else if (type === 'manual_rejected') {
+      resolvedType = 'manual';
+      resolvedAction = 'failed';
+    } else {
+      resolvedType = type;
+      resolvedAction = 'info';
+    }
+
     logs.unshift({
       id: 'LOG-' + Date.now() + '-' + Math.floor(1000 + Math.random() * 9000),
-      type, // 'email_verified', 'phone_verified', 'failed_otp_attempt', 'suspicious_activity'
+      type: resolvedType,
+      action: resolvedAction,
       email: email || '',
       phone: phone || '',
       details: details || '',
@@ -183,6 +212,12 @@ app.post('/api/auth/login', async (req, res) => {
       language: user.language || 'English (United States)',
       homeAddress: user.homeAddress || 'Not set',
       workAddress: user.workAddress || 'Not set',
+      aadhaarNumber: user.aadhaarNumber || '',
+      alternatePhone: user.alternatePhone || '',
+      city: user.city || '',
+      state: user.state || '',
+      zipCode: user.zipCode || '',
+      companyName: user.companyName || '',
       isGoogle: !user.passwordHash
     }
   });
@@ -228,6 +263,12 @@ app.post('/api/auth/google', async (req, res) => {
         language: user.language || 'English (United States)',
         homeAddress: user.homeAddress || 'Not set',
         workAddress: user.workAddress || 'Not set',
+        aadhaarNumber: user.aadhaarNumber || '',
+        alternatePhone: user.alternatePhone || '',
+        city: user.city || '',
+        state: user.state || '',
+        zipCode: user.zipCode || '',
+        companyName: user.companyName || '',
         isGoogle: !user.passwordHash
       }
     });
@@ -421,12 +462,34 @@ app.post('/api/auth/update-profile', (req, res) => {
       return res.status(401).json({ success: false, message: 'Unauthorized client access' });
     }
     const userId = authHeader.replace('Bearer elite-user-token-', '');
-    const { name, phone, gender, birthday, language, homeAddress, workAddress } = req.body;
+    const { name, phone, gender, birthday, language, homeAddress, workAddress, aadhaarNumber, alternatePhone, city, state, zipCode, companyName } = req.body;
 
     const users = db.getUsers();
     const user = users.find(u => u.id === userId);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    // Age validation: must be at least 18
+    if (birthday && birthday !== 'Not set') {
+      const parts = birthday.split('-');
+      if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1; // 0-indexed
+        const year = parseInt(parts[2], 10);
+        if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+          const birthDate = new Date(year, month, day);
+          const today = new Date();
+          let age = today.getFullYear() - birthDate.getFullYear();
+          const m = today.getMonth() - birthDate.getMonth();
+          if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+          }
+          if (age < 18) {
+            return res.status(400).json({ success: false, message: 'You must be at least 18 years old.' });
+          }
+        }
+      }
     }
 
     // Update fields
@@ -437,6 +500,12 @@ app.post('/api/auth/update-profile', (req, res) => {
     if (language !== undefined) user.language = language;
     if (homeAddress !== undefined) user.homeAddress = homeAddress;
     if (workAddress !== undefined) user.workAddress = workAddress;
+    if (aadhaarNumber !== undefined) user.aadhaarNumber = aadhaarNumber;
+    if (alternatePhone !== undefined) user.alternatePhone = alternatePhone;
+    if (city !== undefined) user.city = city;
+    if (state !== undefined) user.state = state;
+    if (zipCode !== undefined) user.zipCode = zipCode;
+    if (companyName !== undefined) user.companyName = companyName;
 
     db.saveUsers(users);
 
@@ -453,6 +522,12 @@ app.post('/api/auth/update-profile', (req, res) => {
         language: user.language || 'English (United States)',
         homeAddress: user.homeAddress || 'Not set',
         workAddress: user.workAddress || 'Not set',
+        aadhaarNumber: user.aadhaarNumber || '',
+        alternatePhone: user.alternatePhone || '',
+        city: user.city || '',
+        state: user.state || '',
+        zipCode: user.zipCode || '',
+        companyName: user.companyName || '',
         isGoogle: !user.passwordHash
       } 
     });
@@ -463,6 +538,7 @@ app.post('/api/auth/update-profile', (req, res) => {
 });
 
 // User signup route - INITIATE SIGNUP
+// User signup route
 app.post('/api/auth/signup', async (req, res) => {
   try {
     const { email, password, name, phone } = req.body;
@@ -470,68 +546,77 @@ app.post('/api/auth/signup', async (req, res) => {
       return res.status(400).json({ success: false, message: 'All fields (name, email, phone, password) are required.' });
     }
     
-    // Check if user is already verified and registered
+    // Check if user is already registered
     const users = db.getUsers();
-    if (users.some(u => u.email === email && u.verified)) {
-      return res.status(409).json({ success: false, message: 'Email already registered and verified.' });
+    if (users.some(u => u.email === email)) {
+      return res.status(409).json({ success: false, message: 'Email already registered.' });
     }
-    if (users.some(u => u.phone === phone && u.verified)) {
-      return res.status(409).json({ success: false, message: 'Mobile number already registered and verified.' });
+    if (users.some(u => u.phone === phone)) {
+      return res.status(409).json({ success: false, message: 'Mobile number already registered.' });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
     
-    // Create random session ID
-    const signupSessionId = 'SESS-' + crypto.randomBytes(16).toString('hex');
-    
-    // Generate Mobile OTP (6-digit numeric)
-    const mobileOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    const mobileOtpExpires = Date.now() + 5 * 60 * 1000; // 5 minutes expiry
-
-    // Save temporary signup state
-    tempSignups[signupSessionId] = {
-      name,
+    // Create new verified user directly
+    const newUser = {
+      id: 'U' + Date.now(),
       email,
+      name,
       phone,
       passwordHash,
-      emailOtp: null,
-      emailOtpExpires: null,
-      emailVerified: true,
-      mobileOtp,
-      mobileOtpExpires,
-      mobileVerified: false,
-      emailOtpAttempts: 0,
-      mobileOtpAttempts: 0,
-      emailLastSent: 0,
-      mobileLastSent: Date.now(),
-      emailResendsCount: 0,
-      mobileResendsCount: 0
+      verified: true,
+      createdAt: new Date().toISOString(),
+      gender: 'Prefer not to say',
+      birthday: 'Not set',
+      language: 'English (United States)',
+      homeAddress: 'Not set',
+      workAddress: 'Not set',
+      aadhaarNumber: '',
+      alternatePhone: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      companyName: ''
     };
 
-    // Print to server console for developer verification
-    console.log(`\n==============================================`);
-    console.log(`[SIMULATED SMS] SMS OTP for ${phone}: ${mobileOtp}`);
-    console.log(`==============================================\n`);
+    users.push(newUser);
+    db.saveUsers(users);
 
-    // Send Mobile OTP
-    sendMockSMS(
-      phone,
-      `Elite PS Rentals: Your verification code is ${mobileOtp}. Valid for 5 minutes.`
+    // Auto log in user: generate simple auth token
+    const token = 'elite-user-token-' + newUser.id;
+
+    // Send final welcome email
+    sendMockEmail(
+      newUser.email,
+      'Welcome to Elite PS Rentals!',
+      `Hi ${newUser.name},\n\nYour account has been created successfully!\n\nYou can now log in, book PS5 consoles and VR setups, and enjoy premium gaming.\n\nHappy Gaming!\n- The Elite PS Rentals Team`
     );
 
-    // Dev mode: if Twilio is not configured, return SMS OTP in response so frontend can show it
-    const isSmsDevMode = !process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER;
-
-    res.json({
+    res.status(201).json({
       success: true,
-      message: isSmsDevMode
-        ? `Dev Mode: Real SMS not configured. Your SMS OTP is: ${mobileOtp}`
-        : 'Signup initiated successfully. SMS OTP has been sent to your phone.',
-      signupSessionId,
-      ...(isSmsDevMode && { devSmsOtp: mobileOtp, devMode: true })
+      message: 'Account created successfully!',
+      token,
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        phone: newUser.phone,
+        gender: newUser.gender,
+        birthday: newUser.birthday,
+        language: newUser.language,
+        homeAddress: newUser.homeAddress,
+        workAddress: newUser.workAddress,
+        aadhaarNumber: newUser.aadhaarNumber,
+        alternatePhone: newUser.alternatePhone,
+        city: newUser.city,
+        state: newUser.state,
+        zipCode: newUser.zipCode,
+        companyName: newUser.companyName,
+        isGoogle: false
+      }
     });
   } catch (error) {
-    console.error('Signup initiate error:', error);
+    console.error('Signup error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
@@ -807,7 +892,11 @@ app.get('/api/my-bookings', (req, res) => {
     }
     const userId = authHeader.replace('Bearer elite-user-token-', '');
     const bookings = db.getBookings();
-    const clientBookings = bookings.filter(b => b.userId === userId);
+    const users = db.getUsers();
+    const user = users.find(u => u.id === userId);
+    const clientBookings = bookings.filter(b => 
+      b.userId === userId || (user && user.email && b.email && b.email.toLowerCase() === user.email.toLowerCase())
+    );
     res.json(clientBookings);
   } catch (error) {
     console.error('Fetch my bookings error:', error);
@@ -1082,6 +1171,7 @@ app.patch('/api/bookings/:id/verify', (req, res) => {
 
   if (verificationStatus === 'Approved') {
     booking.status = 'Confirmed';
+    logVerification('manual_approved', booking.email, booking.phone, `Manual verification approved by admin for Booking ${booking.id}`);
     sendMockEmail(
       booking.email,
       `Booking Confirmed - ${booking.id}`,
@@ -1096,6 +1186,7 @@ app.patch('/api/bookings/:id/verify', (req, res) => {
     );
   } else if (verificationStatus === 'Rejected') {
     booking.status = 'Cancelled';
+    logVerification('manual_rejected', booking.email, booking.phone, `Manual verification rejected by admin for Booking ${booking.id}`);
     
     // If order was cancelled/refunded, return stock
     const products = db.getProducts();
@@ -1338,6 +1429,44 @@ app.get('/api/admin/verification-logs', (req, res) => {
   res.json(logs);
 });
 
+// GET /api/admin/verified-users - List all verified user accounts (Admin only)
+app.get('/api/admin/verified-users', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer elite-admin-token-')) {
+    return res.status(401).json({ success: false, message: 'Unauthorized admin access' });
+  }
+  try {
+    const users = db.getUsers();
+    const verifiedUsers = users
+      .filter(u => u.verified === true)
+      .map(u => ({
+        id: u.id,
+        name: u.name || '',
+        email: u.email || '',
+        phone: u.phone || '',
+        alternatePhone: u.alternatePhone || '',
+        gender: u.gender || '',
+        birthday: u.birthday || '',
+        homeAddress: u.homeAddress || '',
+        workAddress: u.workAddress || '',
+        city: u.city || '',
+        state: u.state || '',
+        zipCode: u.zipCode || '',
+        aadhaarNumber: u.aadhaarNumber || '',
+        companyName: u.companyName || '',
+        language: u.language || '',
+        isGoogle: !u.passwordHash,
+        createdAt: u.createdAt || ''
+      }));
+    // Sort newest first
+    verifiedUsers.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    res.json({ success: true, users: verifiedUsers });
+  } catch (err) {
+    console.error('Error fetching verified users:', err);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
 // ================= REVIEW ENDPOINTS =================
 
 // 1. GET /api/reviews - Fetch all reviews (newest first)
@@ -1383,13 +1512,16 @@ app.post('/api/reviews', (req, res) => {
     let verifiedProductId = productId || null;
     let verifiedProductName = null;
     let userId = null;
-    
-    // Extract userId if bearer token is present
+    // Extract userId and enforce authentication
     const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer elite-user-token-')) {
-      userId = authHeader.replace('Bearer elite-user-token-', '');
+    if (!authHeader || !authHeader.startsWith('Bearer elite-user-token-')) {
+      return res.status(401).json({ success: false, message: 'Only logged in users can post reviews.' });
     }
-    
+    userId = authHeader.replace('Bearer elite-user-token-', '');
+    const users = db.getUsers();
+    if (!users.some(u => u.id === userId)) {
+      return res.status(401).json({ success: false, message: 'Only registered users can post reviews.' });
+    }    
     // If verified checkout bookingId is provided
     if (bookingId) {
       // Prevent duplicate reviews for the same order

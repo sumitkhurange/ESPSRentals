@@ -221,6 +221,144 @@ function saveReviews(reviews) {
   }
 }
 
+// Shift all database dates so the latest date aligns with the current time.
+// This fulfills: "in whole website the details must be till the present day till its used"
+function shiftDatabaseDatesToPresent() {
+  const bookings = getBookings();
+  const logs = getVerificationLogs();
+  const emails = getEmails();
+  const reviews = getReviews();
+
+  let maxTime = 0;
+
+  const checkMax = (dateStr) => {
+    if (!dateStr) return;
+    const t = new Date(dateStr).getTime();
+    if (!isNaN(t) && t > maxTime) {
+      maxTime = t;
+    }
+  };
+
+  bookings.forEach(b => {
+    checkMax(b.createdAt);
+    if (b.items) {
+      b.items.forEach(item => {
+        checkMax(item.startDate);
+        checkMax(item.endDate);
+      });
+    }
+  });
+
+  logs.forEach(log => {
+    checkMax(log.timestamp);
+  });
+
+  emails.forEach(email => {
+    checkMax(email.createdAt);
+  });
+
+  reviews.forEach(review => {
+    checkMax(review.createdAt);
+  });
+
+  if (maxTime === 0) return;
+
+  const now = Date.now();
+  const diffMs = now - maxTime;
+
+  // Only shift if the max time is in the past (e.g., more than 5 minutes ago)
+  if (diffMs > 5 * 60 * 1000) {
+    console.log(`[DB] Shifting database dates forward by ${(diffMs / (1000 * 60 * 60 * 24)).toFixed(2)} days to match the present day.`);
+
+    const shiftDateTime = (str) => {
+      if (!str) return str;
+      const t = new Date(str).getTime();
+      if (isNaN(t)) return str;
+      return new Date(t + diffMs).toISOString();
+    };
+
+    const shiftDateOnly = (str) => {
+      if (!str) return str;
+      const t = new Date(str).getTime();
+      if (isNaN(t)) return str;
+      return new Date(t + diffMs).toISOString().split('T')[0];
+    };
+
+    bookings.forEach(b => {
+      b.createdAt = shiftDateTime(b.createdAt);
+      if (b.items) {
+        b.items.forEach(item => {
+          item.startDate = shiftDateOnly(item.startDate);
+          item.endDate = shiftDateOnly(item.endDate);
+        });
+      }
+    });
+
+    logs.forEach(log => {
+      log.timestamp = shiftDateTime(log.timestamp);
+      if (!log.action) {
+        if (log.type === 'email_verified') {
+          log.type = 'email';
+          log.action = 'verified';
+        } else if (log.type === 'phone_verified') {
+          log.type = 'phone';
+          log.action = 'verified';
+        } else if (log.type === 'failed_otp_attempt') {
+          log.type = (log.details && log.details.toLowerCase().includes('email')) ? 'email' : 'phone';
+          log.action = 'failed';
+        } else if (log.type === 'suspicious_activity') {
+          log.type = 'security';
+          log.action = 'failed';
+        } else {
+          log.action = 'success';
+        }
+      }
+    });
+
+    emails.forEach(email => {
+      email.createdAt = shiftDateTime(email.createdAt);
+    });
+
+    reviews.forEach(review => {
+      review.createdAt = shiftDateTime(review.createdAt);
+    });
+
+    saveBookings(bookings);
+    saveVerificationLogs(logs);
+    saveEmails(emails);
+    saveReviews(reviews);
+  } else {
+    // If not shifting dates, still migrate any old format logs
+    let logsChanged = false;
+    logs.forEach(log => {
+      if (!log.action) {
+        if (log.type === 'email_verified') {
+          log.type = 'email';
+          log.action = 'verified';
+        } else if (log.type === 'phone_verified') {
+          log.type = 'phone';
+          log.action = 'verified';
+        } else if (log.type === 'failed_otp_attempt') {
+          log.type = (log.details && log.details.toLowerCase().includes('email')) ? 'email' : 'phone';
+          log.action = 'failed';
+        } else if (log.type === 'suspicious_activity') {
+          log.type = 'security';
+          log.action = 'failed';
+        } else {
+          log.action = 'success';
+        }
+        logsChanged = true;
+      }
+    });
+    if (logsChanged) {
+      saveVerificationLogs(logs);
+    }
+  }
+}
+
+shiftDatabaseDatesToPresent();
+
+
 module.exports = {
   getProducts,
   saveProducts,
