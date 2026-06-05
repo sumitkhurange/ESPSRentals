@@ -3215,106 +3215,95 @@ export default function App() {
 
 
           {/* WRITE A REVIEW SECTION */}
-          <div className="section-header" style={{ marginTop: '40px' }}>
-            <h2 className="section-title">Share Your <span>Experience</span></h2>
-            <p className="section-subtitle">Only verified and logged in customers can rate our systems and services</p>
-          </div>
+          {isUserLoggedIn && (
+            <>
+              <div className="section-header" style={{ marginTop: '40px' }}>
+                <h2 className="section-title">Share Your <span>Experience</span></h2>
+                <p className="section-subtitle">Only verified and logged in customers can rate our systems and services</p>
+              </div>
 
-          <div className="glass-panel" style={{ maxWidth: '800px', margin: '0 auto 48px auto', padding: '32px' }}>
-            {isUserLoggedIn ? (
-              <form 
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleReviewSubmit(formProduct || 'general');
-                }}
-                style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
-              >
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                  <div className="form-group">
-                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase' }}>Select Product / Service</label>
-                    <select
-                      className="form-input"
-                      value={formProduct}
-                      onChange={(e) => setFormProduct(e.target.value)}
-                      style={{ background: 'var(--bg-darker)', color: '#fff', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px' }}
-                    >
-                      <option value="general">General Storefront & Service</option>
-                      {products.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          🎮 {p.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+              <div className="glass-panel" style={{ maxWidth: '800px', margin: '0 auto 48px auto', padding: '32px' }}>
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleReviewSubmit(formProduct || 'general');
+                  }}
+                  style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
+                >
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <div className="form-group">
+                      <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase' }}>Select Product / Service</label>
+                      <select
+                        className="form-input"
+                        value={formProduct}
+                        onChange={(e) => setFormProduct(e.target.value)}
+                        style={{ background: 'var(--bg-darker)', color: '#fff', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px' }}
+                      >
+                        <option value="general">General Storefront & Service</option>
+                        {products.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            🎮 {p.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                  <div className="form-group">
-                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase' }}>Your Rating</label>
-                    <div style={{ display: 'flex', gap: '6px', cursor: 'pointer', marginTop: '6px' }}>
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star
-                          key={star}
-                          size={24}
-                          onClick={() => setFormRating(star)}
-                          style={{
-                            color: star <= formRating ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                            fill: star <= formRating ? 'var(--accent-cyan)' : 'none',
-                            transition: 'all 0.2s ease'
-                          }}
-                        />
-                      ))}
+                    <div className="form-group">
+                      <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase' }}>Your Rating</label>
+                      <div style={{ display: 'flex', gap: '6px', cursor: 'pointer', marginTop: '6px' }}>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            size={24}
+                            onClick={() => setFormRating(star)}
+                            style={{
+                              color: star <= formRating ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                              fill: star <= formRating ? 'var(--accent-cyan)' : 'none',
+                              transition: 'all 0.2s ease'
+                            }}
+                          />
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="form-group">
-                  <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase' }}>Your Display Name</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                    required
-                    placeholder="Enter your name"
-                  />
-                </div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase' }}>Your Display Name</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      required
+                      placeholder="Enter your name"
+                    />
+                  </div>
 
-                <div className="form-group">
-                  <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase' }}>Write Your Review</label>
-                  <textarea
-                    className="form-input"
-                    rows="4"
-                    value={formComment}
-                    onChange={(e) => setFormComment(e.target.value)}
-                    required
-                    placeholder="Tell us what you think of the console, delivery, or service..."
-                    style={{ resize: 'vertical', minHeight: '100px' }}
-                  />
-                </div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase' }}>Write Your Review</label>
+                    <textarea
+                      className="form-input"
+                      rows="4"
+                      value={formComment}
+                      onChange={(e) => setFormComment(e.target.value)}
+                      required
+                      placeholder="Tell us what you think of the console, delivery, or service..."
+                      style={{ resize: 'vertical', minHeight: '100px' }}
+                    />
+                  </div>
 
-                <button
-                  type="submit"
-                  className="btn-signin"
-                  disabled={isSubmittingForm}
-                  style={{ width: '100%', padding: '14px', fontSize: '14px', fontWeight: 'bold' }}
-                >
-                  {isSubmittingForm ? 'Submitting Your Review...' : '🚀 Submit Review & Rating'}
-                </button>
-              </form>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '16px 0' }}>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '16px' }}>
-                  🔒 Want to leave a review? Please sign in to rate our consoles and service.
-                </p>
-                <button
-                  className="btn-signin"
-                  onClick={() => { setLoginEmail(''); setLoginPassword(''); setView('login'); }}
-                  style={{ padding: '10px 28px', fontSize: '13px' }}
-                >
-                  Sign In to Review
-                </button>
+                  <button
+                    type="submit"
+                    className="btn-signin"
+                    disabled={isSubmittingForm}
+                    style={{ width: '100%', padding: '14px', fontSize: '14px', fontWeight: 'bold' }}
+                  >
+                    {isSubmittingForm ? 'Submitting Your Review...' : '🚀 Submit Review & Rating'}
+                  </button>
+                </form>
               </div>
-            )}
-          </div>
+            </>
+          )}
 
           <div style={{ height: '20px' }} />
         </>
@@ -7171,6 +7160,22 @@ export default function App() {
                                 >
                                   📄 View Receipt
                                 </button>
+                                {(st === 'delivered' || st === 'completed' || st === 'active') && !reviews.some(r => r.bookingId === b.id) && (
+                                  <button
+                                    className="btn-signin"
+                                    style={{ margin: '6px 0 0 0', padding: '4px 10px', fontSize: '11px', width: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                    onClick={() => {
+                                      setFeedbackBooking(b);
+                                      setFeedbackProductRating(5);
+                                      setFeedbackDeliveryRating(5);
+                                      setFeedbackComment('');
+                                      setFeedbackSuccess(false);
+                                      setShowFeedbackModal(true);
+                                    }}
+                                  >
+                                    ✍️ Rate &amp; Review
+                                  </button>
+                                )}
                               </div>
                               <span style={{ fontWeight: 'bold', color: 'var(--accent-cyan)', fontSize: '15px' }}>₹{b.totalAmount.toFixed(2)}</span>
                             </div>
