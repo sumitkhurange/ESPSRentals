@@ -44,7 +44,8 @@ function sendMockEmail(to, subject, body, userId = null) {
       subject,
       body,
       userId,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     };
     emails.unshift(newEmail);
     db.saveEmails(emails);

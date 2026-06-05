@@ -103,7 +103,7 @@ export default function App() {
           endDate: end,
           deliverySlot: slot || '10:00 AM - 12:00 PM',
           basePrice,
-          deliveryCharge: 149,
+          deliveryCharge: 0,
           qty: 1
         }];
       }
@@ -654,41 +654,10 @@ export default function App() {
     }
   };
 
-  // Check for delivered bookings to prompt feedback
+  // Check for delivered bookings to prompt feedback (disabled per request to only show reviews via mailbox)
   useEffect(() => {
-    if (!isUserLoggedIn || !userBookings || userBookings.length === 0 || reviews.length === 0) return;
-    
-    const pendingBooking = userBookings.find(booking => {
-      if (booking.status !== 'Delivered') return false;
-      
-      const hasReview = reviews.some(r => r.bookingId === booking.id);
-      if (hasReview) return false;
-      
-      const trackingRaw = localStorage.getItem(`elite_suppress_${booking.id}`);
-      if (trackingRaw) {
-        try {
-          const tracking = JSON.parse(trackingRaw);
-          if (tracking.skipCount >= 3) return false;
-          const timePassed = Date.now() - tracking.lastReminderTime;
-          if (timePassed < 24 * 60 * 60 * 1000) {
-            return false;
-          }
-        } catch {
-          // ignore
-        }
-      }
-      return true;
-    });
-
-    if (pendingBooking && !showFeedbackModal) {
-      setFeedbackBooking(pendingBooking);
-      setFeedbackProductRating(5);
-      setFeedbackDeliveryRating(5);
-      setFeedbackComment('');
-      setFeedbackSuccess(false);
-      setShowFeedbackModal(true);
-    }
-  }, [userBookings, reviews, isUserLoggedIn]);
+    // Disabled auto-popup reviews modal on dashboard
+  }, []);
 
   // Live clock ticker
   useEffect(() => {
@@ -1296,6 +1265,18 @@ export default function App() {
       }
     }
   }, [otpDigits]);
+
+  const handleProtectedDrawerClick = (tabName) => {
+    if (!isUserLoggedIn) {
+      showToast('Please sign in first to access your dashboard.', 'error');
+      setView('login');
+      setMenuOpen(false);
+      return;
+    }
+    setView('client-dashboard');
+    setClientTab(tabName);
+    setMenuOpen(false);
+  };
 
   const handleUserLogout = () => {
     setIsUserLoggedIn(false);
@@ -1983,7 +1964,7 @@ export default function App() {
       endDate: format(end),
       deliverySlot: "12:00 PM - 02:00 PM",
       basePrice: basePrice,
-      deliveryCharge: 149,
+      deliveryCharge: 0,
       qty: 1
     };
     setCart(prev => [...prev, customItem]);
@@ -2155,8 +2136,7 @@ export default function App() {
   };
 
   const getTotalPrice = () => {
-    const deliveryCharge = cart.length > 0 ? 149 : 0;
-    let total = getSubtotal() + getTax() + deliveryCharge - getDiscountAmount();
+    let total = getSubtotal() + getTax() - getDiscountAmount();
     return Math.max(0, total);
   };
 
@@ -2569,24 +2549,24 @@ export default function App() {
 
   const GLOBAL_FAQS = [
     {
-      q: "How does the zero security deposit scheme work?",
-      a: "To offer zero security deposit rentals, we run a quick 2-minute online identity verification during checkout. You just need to upload a selfie and national ID proof (Aadhaar or Driving License) which undergoes automated face-liveness matching."
+      q: "How do I rent without paying a security deposit?",
+      a: "Just upload a quick photo (selfie) and a government ID (like Aadhaar card) during checkout. We verify it in 2 minutes so you don't have to pay any deposit money!"
     },
     {
-      q: "What areas do you deliver to?",
-      a: "Our primary delivery hub is located in Vasai West. We provide door delivery and professional installation services to Vasai, Virar, Nalasopara, and nearby suburbs in Mumbai within 2 to 4 hours."
+      q: "Where do you deliver?",
+      a: "We deliver directly to your home in Vasai, Virar, Nalasopara, and nearby areas. Our team will also set up the console and make sure it works."
     },
     {
-      q: "Are games pre-loaded on the consoles?",
-      a: "Yes! All rented consoles are pre-loaded with trending games like FIFA, GTA V, Spider-Man, and Call of Duty. If you have special game requests, let us know on WhatsApp after booking."
+      q: "Do I get games with the console?",
+      a: "Yes! Consoles come pre-installed with popular games like FIFA/FC, GTA V, Spider-Man, and more. You can also ask us to add specific games when booking."
     },
     {
       q: "What happens in case of accidental damage?",
-      a: "Normal wear and tear is fully covered. However, physical drop damage, water spills, or opening the hardware casing will attract repair fees as outlined in our rental agreement terms."
+      a: "Don't worry about small scratches from normal use. But if the console falls down, gets wet, or is opened up, you will have to pay for the repair cost."
     },
     {
-      q: "Can I extend my rental tenure?",
-      a: "Yes! You can request an extension easily by contacting our customer care on WhatsApp before your active tenure expires. Extensions are subject to availability."
+      q: "Can I keep the console for more days?",
+      a: "Yes, of course! Just message us on WhatsApp at least 2 days before your rental ends, and we will extend it if it is available."
     }
   ];
 
@@ -2735,18 +2715,40 @@ export default function App() {
               >
                 <span>Browse Catalog</span>
               </div>
-              <div 
-                className={`drawer-link ${view === 'why-us' ? 'active' : ''}`}
-                onClick={() => { setView('why-us'); setMenuOpen(false); }}
-              >
-                <span>Why Rent With Us</span>
-              </div>
-              <div 
-                className={`drawer-link ${view === 'faqs' ? 'active' : ''}`}
-                onClick={() => { setView('faqs'); setMenuOpen(false); }}
-              >
-                <span>Help & FAQs</span>
-              </div>
+              {isUserLoggedIn && (
+                <>
+                  <div 
+                    className={`drawer-link ${view === 'client-dashboard' && clientTab === 'profile' ? 'active' : ''}`}
+                    onClick={() => handleProtectedDrawerClick('profile')}
+                  >
+                    <span>Profile</span>
+                  </div>
+                  <div 
+                    className={`drawer-link ${view === 'client-dashboard' && clientTab === 'coupons' ? 'active' : ''}`}
+                    onClick={() => handleProtectedDrawerClick('coupons')}
+                  >
+                    <span>Coupons Available</span>
+                  </div>
+                  <div 
+                    className={`drawer-link ${view === 'client-dashboard' && clientTab === 'bookings' ? 'active' : ''}`}
+                    onClick={() => handleProtectedDrawerClick('bookings')}
+                  >
+                    <span>Order History</span>
+                  </div>
+                  <div 
+                    className={`drawer-link ${view === 'client-dashboard' && clientTab === 'emails' ? 'active' : ''}`}
+                    onClick={() => handleProtectedDrawerClick('emails')}
+                  >
+                    <span>Mailbox Notification</span>
+                  </div>
+                  <div 
+                    className={`drawer-link ${view === 'client-dashboard' && clientTab === 'verified-docs' ? 'active' : ''}`}
+                    onClick={() => handleProtectedDrawerClick('verified-docs')}
+                  >
+                    <span>Verified Docs & Bills ({userBookings.filter(b => b.verificationStatus === 'Approved').length})</span>
+                  </div>
+                </>
+              )}
               <div 
                 className={`drawer-link ${view === 'about' ? 'active' : ''}`}
                 onClick={() => { setView('about'); setMenuOpen(false); }}
@@ -2754,45 +2756,17 @@ export default function App() {
                 <span>About Us</span>
               </div>
               <div 
+                className={`drawer-link ${view === 'why-us' ? 'active' : ''}`}
+                onClick={() => { setView('why-us'); setMenuOpen(false); }}
+              >
+                <span>Why Rent Us</span>
+              </div>
+              <div 
                 className={`drawer-link ${view === 'contact' ? 'active' : ''}`}
                 onClick={() => { setView('contact'); setMenuOpen(false); }}
               >
                 <span>Contact Us</span>
               </div>
-              {isUserLoggedIn && (
-                <>
-                  <div
-                    className={`drawer-link ${view === 'client-dashboard' && clientTab === 'bookings' ? 'active' : ''}`}
-                    onClick={() => { setView('client-dashboard'); setClientTab('bookings'); setMenuOpen(false); }}
-                  >
-                    <span>Order History</span>
-                  </div>
-                  <div
-                    className={`drawer-link ${view === 'client-dashboard' && clientTab === 'coupons' ? 'active' : ''}`}
-                    onClick={() => { setView('client-dashboard'); setClientTab('coupons'); setMenuOpen(false); }}
-                  >
-                    <span>Coupons Available</span>
-                  </div>
-                  <div
-                    className={`drawer-link ${view === 'client-dashboard' && clientTab === 'emails' ? 'active' : ''}`}
-                    onClick={() => { setView('client-dashboard'); setClientTab('emails'); setMenuOpen(false); }}
-                  >
-                    <span>Mailbox Notifications</span>
-                  </div>
-                  <div
-                    className={`drawer-link ${view === 'client-dashboard' && clientTab === 'verified-docs' ? 'active' : ''}`}
-                    onClick={() => { setView('client-dashboard'); setClientTab('verified-docs'); setMenuOpen(false); }}
-                  >
-                    <span>Verified Docs & Bills ({userBookings.filter(b => b.verificationStatus === 'Approved').length})</span>
-                  </div>
-                  <div
-                    className={`drawer-link ${view === 'client-dashboard' && clientTab === 'profile' ? 'active' : ''}`}
-                    onClick={() => { setView('client-dashboard'); setClientTab('profile'); setMenuOpen(false); }}
-                  >
-                    <span>Profile</span>
-                  </div>
-                </>
-              )}
             </>
           )}
         </div>
@@ -3144,224 +3118,8 @@ export default function App() {
           </div>
 
 
-          {/* CUSTOMER REVIEWS SECTION */}
-          <div className="section-header" style={{ marginTop: '60px' }}>
-            <h2 className="section-title">Customer <span>Reviews</span></h2>
-            <p className="section-subtitle">What gamers say about our premium setups and support</p>
-          </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '32% 65%', gap: '3%', marginBottom: '60px', alignItems: 'start' }} className="reviews-homepage-layout">
-            {/* Left side: Rating Summary & Form */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <div className="glass-panel" style={{ padding: '24px', textAlign: 'center' }}>
-                <h4 style={{ fontSize: '15px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Overall Score</h4>
-                <div style={{ fontSize: '48px', fontWeight: '800', color: '#fff', lineHeight: 1, fontFamily: 'var(--font-display)', marginBottom: '8px' }}>
-                  {reviews.length > 0 ? getAvgRating(reviews) : '0.0'}
-                </div>
-                <div style={{ marginBottom: '8px' }}>
-                  {renderStars(reviews.length > 0 ? Math.round(getAvgRating(reviews)) : 0)}
-                </div>
-                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                  Based on {reviews.length} customer ratings
-                </span>
-              </div>
-
-              {/* Form */}
-              <div className="glass-panel" style={{ padding: '24px' }}>
-                <h4 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--accent-cyan)', marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
-                  Share Your Experience
-                </h4>
-                <form onSubmit={(e) => {
-                  e.preventDefault();
-                  handleReviewSubmit(formProduct || 'general');
-                }} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', fontWeight: 'bold' }}>Rating</label>
-                    <div style={{ display: 'flex', gap: '4px' }}>
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          type="button"
-                          key={star}
-                          onClick={() => setFormRating(star)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                        >
-                          <Star
-                            size={20}
-                            fill={star <= formRating ? 'var(--accent-cyan)' : 'none'}
-                            color="var(--accent-cyan)"
-                            strokeWidth={1.5}
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="date-input-wrapper">
-                    <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', fontWeight: 'bold' }}>Your Name</label>
-                    <input
-                      type="text"
-                      placeholder="Enter your name"
-                      value={formName}
-                      onChange={(e) => setFormName(e.target.value)}
-                      style={{ width: '100%' }}
-                      required
-                    />
-                  </div>
-
-                  <div className="date-input-wrapper">
-                    <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', fontWeight: 'bold' }}>Product Rented</label>
-                    <select
-                      value={formProduct}
-                      onChange={(e) => setFormProduct(e.target.value)}
-                      style={{
-                        width: '100%',
-                        background: 'var(--bg-darker)',
-                        border: '1px solid var(--border)',
-                        borderRadius: '8px',
-                        padding: '10px 12px',
-                        color: '#fff',
-                        fontSize: '13.5px',
-                        outline: 'none'
-                      }}
-                    >
-                      <option value="general">General Site Experience</option>
-                      {products.map(p => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="date-input-wrapper">
-                    <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', fontWeight: 'bold' }}>Review</label>
-                    <textarea
-                      placeholder="Write your comments here..."
-                      value={formComment}
-                      onChange={(e) => setFormComment(e.target.value)}
-                      rows={3}
-                      style={{
-                        width: '100%',
-                        background: 'var(--bg-darker)',
-                        border: '1px solid var(--border)',
-                        borderRadius: '8px',
-                        padding: '10px 12px',
-                        color: '#fff',
-                        fontSize: '13.5px',
-                        resize: 'none',
-                        fontFamily: 'inherit'
-                      }}
-                      required
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="btn-signin"
-                    disabled={isSubmittingForm}
-                    style={{ width: '100%', padding: '12px', fontSize: '13.5px', margin: 0 }}
-                  >
-                    {isSubmittingForm ? 'Submitting...' : 'Submit Review'}
-                  </button>
-                </form>
-              </div>
-            </div>
-
-            {/* Right side: Reviews Grid & Filters */}
-            <div>
-              {/* Rating Star Filters */}
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }} className="review-filters-row">
-                {['All', 5, 4, 3, 2, 1].map((star) => (
-                  <button
-                    key={star}
-                    className={`btn-clipboard ${activeReviewRatingFilter === star ? 'active' : ''}`}
-                    onClick={() => setActiveReviewRatingFilter(star)}
-                    style={{
-                      margin: 0,
-                      padding: '6px 14px',
-                      fontSize: '12px',
-                      borderRadius: '20px',
-                      borderColor: activeReviewRatingFilter === star ? 'var(--accent-cyan)' : 'var(--border)',
-                      background: activeReviewRatingFilter === star ? '#00e5ff0a' : 'transparent',
-                      color: activeReviewRatingFilter === star ? 'var(--accent-cyan)' : 'var(--text-secondary)'
-                    }}
-                  >
-                    {star === 'All' ? 'All Reviews' : `${star} ★`}
-                  </button>
-                ))}
-              </div>
-
-              {/* Grid of review cards */}
-              {reviewsLoading ? (
-                <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>Loading reviews...</div>
-              ) : reviews.filter(r => activeReviewRatingFilter === 'All' || r.rating === activeReviewRatingFilter).length === 0 ? (
-                <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                  No reviews match this rating filter.
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-                  {reviews
-                    .filter(r => activeReviewRatingFilter === 'All' || r.rating === activeReviewRatingFilter)
-                    .map((rev) => {
-                      const firstChar = rev.customerName ? rev.customerName.charAt(0).toUpperCase() : '?';
-                      return (
-                        <div 
-                          key={rev.id} 
-                          className="glass-panel review-card-item"
-                          style={{
-                            padding: '20px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'space-between',
-                            border: rev.featured ? '1px solid var(--accent-cyan)' : '1px solid var(--border)',
-                            boxShadow: rev.featured ? '0 0 10px rgba(0, 229, 255, 0.1)' : 'none'
-                          }}
-                        >
-                          <div>
-                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
-                              <div style={{
-                                width: '36px',
-                                height: '36px',
-                                borderRadius: '50%',
-                                background: 'linear-gradient(135deg, var(--accent-blue), var(--accent-cyan))',
-                                color: 'var(--bg-darker)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontWeight: 'bold',
-                                fontSize: '14px'
-                              }}>
-                                {firstChar}
-                              </div>
-                              <div>
-                                <h4 style={{ fontSize: '13.5px', fontWeight: 'bold', color: '#fff', margin: 0 }}>
-                                  {rev.customerName}
-                                </h4>
-                                <span style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>
-                                  {rev.productName || 'General Review'}
-                                </span>
-                              </div>
-                            </div>
-                            <div style={{ display: 'flex', justifycontent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                              {renderStars(rev.rating)}
-                              {rev.bookingId && (
-                                <span className="status-pill approved" style={{ fontSize: '8px', padding: '1px 5px' }}>
-                                  Verified ✓
-                                </span>
-                              )}
-                            </div>
-                            <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: '1.4', margin: 0 }}>
-                              "{rev.comment}"
-                            </p>
-                          </div>
-                          <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginTop: '12px', textAlign: 'right' }}>
-                            {new Date(rev.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              )}
-            </div>
-          </div>
+          <div style={{ height: '20px' }} />
         </>
       )}
 
@@ -3545,8 +3303,8 @@ export default function App() {
       {view === 'faqs' && (
         <>
           <div className="section-header" style={{ marginTop: '24px' }}>
-            <h2 className="section-title">Frequently <span>Asked Questions</span></h2>
-            <p className="section-subtitle">Everything you need to know about our verification, delivery, and rental rules</p>
+            <h2 className="section-title">Help &amp; <span>FAQs</span></h2>
+            <p className="section-subtitle">Got questions? We have simple answers!</p>
           </div>
 
           <div style={{ maxWidth: '800px', margin: '0 auto 48px auto' }}>
@@ -3577,17 +3335,17 @@ export default function App() {
         <>
           <div className="section-header" style={{ marginTop: '24px' }}>
             <h2 className="section-title">About <span>Elite PS Rentals</span></h2>
-            <p className="section-subtitle">Premium gaming console & hardware rentals in Vasai West, Mumbai</p>
+            <p className="section-subtitle">Simplifying console rentals in Vasai West, Mumbai</p>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', marginBottom: '48px' }}>
             <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: '800', color: 'var(--accent-cyan)' }}>Our Mission</h3>
               <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', fontSize: '14.5px' }}>
-                Elite PS Rentals is India's premium zero-deposit rental service for gaming systems, pro accessories, driving simulators, virtual reality rigs, and 4K audio-visual layouts. We aim to make cutting-edge gaming accessible to everyone in Vasai-Virar and across Mumbai without the heavy upfront retail cost.
+                Welcome to Elite PS Rentals! We make premium gaming accessible to everyone. Instead of buying an expensive console like a PS5, you can rent it from us for a few days or weeks at very affordable prices.
               </p>
               <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', fontSize: '14.5px' }}>
-                Every single piece of hardware undergoes strict sanitization and a 7-point performance inspection before delivery, ensuring a plug-and-play experience straight out of the box.
+                We charge <strong>Zero Security Deposit</strong> and deliver the console directly to your doorstep. We sanitize every device and check it 7 times before delivering it, so you get a brand-new experience. Our team will install it at your home and show you how to play. If you face any issues, our local support team in Vasai is just a WhatsApp message away!
               </p>
             </div>
 
@@ -3596,7 +3354,7 @@ export default function App() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {RENTAL_TERMS.map((term, idx) => (
                   <div key={idx} style={{ display: 'flex', gap: '10px', fontSize: '13.5px', color: 'var(--text-secondary)', alignItems: 'flex-start' }}>
-                    <span style={{ color: 'var(--accent-blue)', fontWeight: 'bold' }}>{idx + 1}.</span>
+                    <span style={{ color: 'var(--accent-blue)', fontWeight: 'bold' }}>•</span>
                     <span>{term}</span>
                   </div>
                 ))}
@@ -3786,13 +3544,20 @@ export default function App() {
               </div>
 
               <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <h4 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--accent-cyan)', textTransform: 'uppercase' }}>Phone & Support</h4>
+                <h4 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--accent-cyan)', textTransform: 'uppercase' }}>Phone &amp; Support</h4>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px' }}>
                   <Smartphone size={18} style={{ color: 'var(--accent-blue)' }} />
-                  <strong>081808 07208 / 081808 07209</strong>
+                  <strong>8180807208</strong>
                 </div>
                 <p style={{ fontSize: '12.5px', color: 'var(--text-muted)' }}>
-                  Our customer service lines are open daily from 9:00 AM to 10:00 PM for booking and setup queries.
+                  Our customer service line is open daily from 9:00 AM to 10:00 PM for booking and setup queries.
+                </p>
+              </div>
+
+              <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <h4 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--accent-cyan)', textTransform: 'uppercase' }}>Email Support</h4>
+                <p style={{ fontSize: '14.5px', color: 'var(--text-secondary)', margin: 0 }}>
+                  ✉️ <a href="mailto:sumitkhurange123@gmail.com" style={{ color: 'var(--accent-cyan)', textDecoration: 'underline' }}>sumitkhurange123@gmail.com</a>
                 </p>
               </div>
 
@@ -3932,7 +3697,7 @@ export default function App() {
                             )}
                           </div>
                           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                            {new Date(rev.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                            {new Date(rev.createdAt).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
                         <div style={{ marginBottom: '8px' }}>{renderStars(rev.rating)}</div>
@@ -3944,86 +3709,11 @@ export default function App() {
                   </div>
                 )}
 
-                {/* ADD REVIEW FORM */}
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
-                  <h4 style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '12px', color: 'var(--accent-cyan)' }}>
-                    Add a Review
-                  </h4>
-                  <form onSubmit={(e) => {
-                    e.preventDefault();
-                    handleReviewSubmit(selectedProduct.id);
-                  }} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    
-                    <div>
-                      <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Rating</label>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button
-                            type="button"
-                            key={star}
-                            onClick={() => setFormRating(star)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                          >
-                            <Star
-                              size={20}
-                              fill={star <= formRating ? 'var(--accent-cyan)' : 'none'}
-                              color="var(--accent-cyan)"
-                              strokeWidth={1.5}
-                            />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="date-input-wrapper" style={{ display: 'flex', flexDirection: 'column' }}>
-                      <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Your Name</label>
-                      <input
-                        type="text"
-                        placeholder="Enter your name"
-                        value={formName}
-                        onChange={(e) => setFormName(e.target.value)}
-                        style={{
-                          background: 'var(--bg-darker)',
-                          border: '1px solid var(--border)',
-                          borderRadius: '8px',
-                          padding: '10px 12px',
-                          color: '#fff',
-                          fontSize: '13.5px'
-                        }}
-                        required
-                      />
-                    </div>
-
-                    <div className="date-input-wrapper" style={{ display: 'flex', flexDirection: 'column' }}>
-                      <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Your Review</label>
-                      <textarea
-                        placeholder="Share your experience renting this item..."
-                        value={formComment}
-                        onChange={(e) => setFormComment(e.target.value)}
-                        rows={4}
-                        style={{
-                          background: 'var(--bg-darker)',
-                          border: '1px solid var(--border)',
-                          borderRadius: '8px',
-                          padding: '10px 12px',
-                          color: '#fff',
-                          fontSize: '13.5px',
-                          resize: 'none',
-                          fontFamily: 'inherit'
-                        }}
-                        required
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="btn-signin"
-                      disabled={isSubmittingForm}
-                      style={{ width: 'fit-content', padding: '10px 24px', fontSize: '13.5px', marginTop: '6px' }}
-                    >
-                      {isSubmittingForm ? 'Submitting...' : 'Submit Review'}
-                    </button>
-                  </form>
+                {/* ADD REVIEW INFO */}
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '20px', textAlign: 'center' }}>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: 0, fontStyle: 'italic' }}>
+                    ✍️ Want to leave a review? You'll receive a rating link in your <strong>Mailbox Notification</strong> once your order is delivered!
+                  </p>
                 </div>
               </div>
             </div>
@@ -4508,7 +4198,7 @@ export default function App() {
                         "Refund will be triggered automatically if face-match selfie fails."
                       ].map((termText, idx) => (
                         <div key={idx} style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
-                          <span style={{ color: 'var(--accent-cyan)', fontWeight: 'bold' }}>{idx + 1}.</span>
+                          <span style={{ color: 'var(--accent-cyan)', fontWeight: 'bold' }}>•</span>
                           <span>{termText}</span>
                         </div>
                       ))}
@@ -5042,15 +4732,15 @@ export default function App() {
                         <div style={{ minWidth: '180px', textAlign: 'right' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0' }}>
                             <span>Subtotal:</span>
-                            <span>₹{(createdBooking.totalAmount ? (createdBooking.totalAmount - 149 - (createdBooking.discountAmount || 0)) / 1.18 : 0).toFixed(2)}</span>
+                            <span>₹{(createdBooking.totalAmount ? (createdBooking.totalAmount + (createdBooking.discountAmount || 0)) / 1.18 : 0).toFixed(2)}</span>
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0' }}>
                             <span>GST Tax (18%):</span>
-                            <span>₹{(createdBooking.totalAmount ? ((createdBooking.totalAmount - 149 - (createdBooking.discountAmount || 0)) / 1.18) * 0.18 : 0).toFixed(2)}</span>
+                            <span>₹{(createdBooking.totalAmount ? ((createdBooking.totalAmount + (createdBooking.discountAmount || 0)) / 1.18) * 0.18 : 0).toFixed(2)}</span>
                           </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0' }}>
-                            <span>Delivery Slot Fee:</span>
-                            <span>₹149.00</span>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0', color: '#10b981' }}>
+                            <span>Delivery:</span>
+                            <span>FREE 🎉</span>
                           </div>
                           {(createdBooking.discountAmount || 0) > 0 && (
                             <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0', color: 'var(--accent-cyan)' }}>
@@ -5214,9 +4904,9 @@ export default function App() {
                     <span>GST Tax (18%)</span>
                     <span>₹{getTax().toFixed(2)}</span>
                   </div>
-                  <div className="recap-calculation-row">
+                  <div className="recap-calculation-row" style={{ color: '#10b981' }}>
                     <span>Delivery & Installation</span>
-                    <span>₹149.00</span>
+                    <span>FREE 🎉</span>
                   </div>
 
                   <div className="toggle-switch-row">
@@ -5253,7 +4943,10 @@ export default function App() {
                         {/* Available coupon chips */}
                         {!appliedCoupon && (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
-                            {[{ code: 'FIRST10', desc: '10% OFF' }, { code: 'LOYAL10', desc: '10% OFF' }, { code: 'ELITE100', desc: '₹100 OFF' }].map(c => (
+                            {[{ code: 'FIRST10', desc: '10% OFF' }, { code: 'LOYAL10', desc: '10% OFF' }, { code: 'ELITE100', desc: '₹100 OFF' }].filter(c => {
+                              const usedCodes = (userBookings || []).filter(b => b.couponCode).map(b => b.couponCode.toUpperCase());
+                              return !usedCodes.includes(c.code.toUpperCase());
+                            }).map(c => (
                               <button
                                 key={c.code}
                                 type="button"
@@ -6104,7 +5797,7 @@ export default function App() {
                               <td style={{ fontWeight: '600', color: 'var(--accent-cyan)', fontSize: '12.5px' }}>{email.to}</td>
                               <td style={{ fontWeight: '500', fontSize: '12.5px' }}>{email.subject}</td>
                               <td style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                                {new Date(email.timestamp).toLocaleString()}
+                                {new Date(email.timestamp || email.createdAt).toLocaleString()}
                               </td>
                               <td>
                                 <pre style={{ 
@@ -7168,40 +6861,6 @@ export default function App() {
                 const pendingReviewBookings = userBookings.filter(b => b.status === 'Delivered' && !reviews.some(r => r.bookingId === b.id));
                 return (
                   <>
-                    {pendingReviewBookings.length > 0 && (
-                      <div className="glass-panel" style={{ border: '1px solid var(--accent-cyan)', background: '#00e5ff05', marginBottom: '20px', padding: '16px' }}>
-                        <h4 style={{ color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', margin: '0 0 10px 0', fontWeight: 'bold' }}>
-                          <Star size={16} fill="var(--accent-cyan)" /> Pending Product Reviews
-                        </h4>
-                        <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: '0 0 12px 0' }}>
-                          You have {pendingReviewBookings.length} delivered rental{pendingReviewBookings.length > 1 ? 's' : ''} awaiting your review. Rate them to help others!
-                        </p>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                          {pendingReviewBookings.map(b => (
-                            <div key={b.id} className="glass-panel" style={{ background: 'var(--bg-darker)', border: '1px solid var(--border)', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                              <div>
-                                <div style={{ fontWeight: 'bold', fontSize: '13.5px', color: '#fff' }}>{b.items?.[0]?.name || 'Gaming Package'}</div>
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Order ID: {b.id} · Delivered on {new Date(b.createdAt).toLocaleDateString()}</div>
-                              </div>
-                              <button 
-                                className="btn-signin" 
-                                style={{ padding: '6px 16px', fontSize: '12.5px', margin: 0 }}
-                                onClick={() => {
-                                  setFeedbackBooking(b);
-                                  setFeedbackProductRating(5);
-                                  setFeedbackDeliveryRating(5);
-                                  setFeedbackComment('');
-                                  setFeedbackSuccess(false);
-                                  setShowFeedbackModal(true);
-                                }}
-                              >
-                                Rate Now
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                     <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column' }}>
                   <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 'bold', marginBottom: '6px' }}>
                     My Rentals & Booking History
@@ -7329,51 +6988,54 @@ export default function App() {
               })()}
 
               {/* Tab 2: Available Coupons */}
-              {clientTab === 'coupons' && (
-                <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column' }}>
-                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
-                    Available Discount Coupons
-                  </h3>
-                  <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', marginBottom: '20px', lineHeight: '1.4' }}>
-                    Elite PS zero-deposit renting offers standard promotions. Copy and apply them during checkout to claim discounts:
-                  </p>
+              {clientTab === 'coupons' && (() => {
+                const allCoupons = [
+                  { code: 'FIRST10', label: 'FIRST10', desc: '10% OFF on your first rental booking order', color: 'var(--accent-cyan)' },
+                  { code: 'LOYAL10', label: 'LOYAL10', desc: '10% OFF after completing 3 rentals (loyalty reward)', color: '#a78bfa' },
+                  { code: 'ELITE100', label: 'ELITE100', desc: 'Flat ₹100 discount on any rental order', color: '#f59e0b' },
+                ];
+                const usedCodes = (userBookings || []).filter(b => b.couponCode).map(b => b.couponCode.toUpperCase());
+                const availableCoupons = allCoupons.filter(c => !usedCodes.includes(c.code.toUpperCase()));
+                return (
+                  <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column' }}>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 'bold', marginBottom: '8px' }}>
+                      🎟️ Your Discount Coupons
+                    </h3>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px', lineHeight: '1.5' }}>
+                      These promo codes give you discounts at checkout. Copy a code and paste it in the coupon field during checkout.
+                    </p>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {/* Coupon Card 1 */}
-                    <div className="glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: 'rgba(0, 229, 255, 0.03)', border: '1px dashed rgba(0, 229, 255, 0.2)' }}>
-                      <div>
-                        <span style={{ fontSize: '14.5px', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>FIRST10</span>
-                        <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>10% OFF on your first rental booking order</p>
+                    {availableCoupons.length === 0 ? (
+                      <div style={{ padding: '30px', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px dashed var(--border)' }}>
+                        <div style={{ fontSize: '36px', marginBottom: '12px' }}>🎉</div>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>You've used all available coupons. Keep renting to unlock more!</p>
                       </div>
-                      <button className="btn-clipboard" onClick={() => copyToClipboard('FIRST10')} style={{ margin: 0 }}>
-                        Copy Code
-                      </button>
-                    </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {availableCoupons.map(c => (
+                          <div key={c.code} className="glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: 'rgba(0, 229, 255, 0.03)', border: '1px dashed rgba(0, 229, 255, 0.2)' }}>
+                            <div>
+                              <span style={{ fontSize: '14.5px', fontWeight: 'bold', color: c.color }}>{c.label}</span>
+                              <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>{c.desc}</p>
+                            </div>
+                            <button className="btn-clipboard" onClick={() => copyToClipboard(c.code)} style={{ margin: 0 }}>
+                              Copy Code
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
-                    {/* Coupon Card 2 */}
-                    <div className="glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: 'rgba(0, 229, 255, 0.03)', border: '1px dashed rgba(0, 229, 255, 0.2)' }}>
-                      <div>
-                        <span style={{ fontSize: '14.5px', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>LOYAL10</span>
-                        <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>10% OFF automatically after completing 3 rentals</p>
+                    {usedCodes.length > 0 && (
+                      <div style={{ marginTop: '20px', padding: '12px 16px', background: 'rgba(255,255,255,0.02)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>
+                          ✅ Already used: {usedCodes.map(code => <strong key={code} style={{ color: 'var(--text-secondary)', marginLeft: '6px' }}>{code}</strong>)}
+                        </p>
                       </div>
-                      <button className="btn-clipboard" onClick={() => copyToClipboard('LOYAL10')} style={{ margin: 0 }}>
-                        Copy Code
-                      </button>
-                    </div>
-
-                    {/* Coupon Card 3 */}
-                    <div className="glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: 'rgba(0, 229, 255, 0.03)', border: '1px dashed rgba(0, 229, 255, 0.2)' }}>
-                      <div>
-                        <span style={{ fontSize: '14.5px', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>ELITE100</span>
-                        <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>Flat ₹100 discount on any product catalog order</p>
-                      </div>
-                      <button className="btn-clipboard" onClick={() => copyToClipboard('ELITE100')} style={{ margin: 0 }}>
-                        Copy Code
-                      </button>
-                    </div>
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Tab 3: Simulated Mail Log */}
               {clientTab === 'emails' && (
@@ -7400,7 +7062,7 @@ export default function App() {
                         <div key={idx} className="glass-panel" style={{ padding: '16px', background: 'rgba(255, 255, 255, 0.02)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '6px' }}>
                             <strong style={{ fontSize: '13.5px', color: 'var(--accent-cyan)' }}>{email.subject}</strong>
-                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{new Date(email.timestamp).toLocaleString()}</span>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{new Date(email.timestamp || email.createdAt).toLocaleString()}</span>
                           </div>
                           <pre style={{ 
                             whiteSpace: 'pre-wrap', 
@@ -7412,6 +7074,31 @@ export default function App() {
                           }}>
                             {email.body}
                           </pre>
+                          {email.subject.startsWith('Order Delivered Successfully') && (() => {
+                            const match = email.subject.match(/EPB-\d+/);
+                            const bId = match ? match[0] : null;
+                            const booking = userBookings.find(b => b.id === bId);
+                            const hasBeenReviewed = reviews.some(r => r.bookingId === bId);
+                            if (booking && !hasBeenReviewed) {
+                              return (
+                                <button
+                                  className="btn-signin"
+                                  style={{ marginTop: '10px', padding: '6px 14px', fontSize: '12.5px', width: 'auto', alignSelf: 'flex-start', margin: '8px 0 0 0' }}
+                                  onClick={() => {
+                                    setFeedbackBooking(booking);
+                                    setFeedbackProductRating(5);
+                                    setFeedbackDeliveryRating(5);
+                                    setFeedbackComment('');
+                                    setFeedbackSuccess(false);
+                                    setShowFeedbackModal(true);
+                                  }}
+                                >
+                                  ✍️ Rate &amp; Review Your Order
+                                </button>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
                       ))}
                     </div>
@@ -7532,15 +7219,15 @@ export default function App() {
                               <div style={{ minWidth: '180px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-secondary)', margin: '3px 0' }}>
                                   <span>Subtotal:</span>
-                                  <span>₹{(b.totalAmount ? (b.totalAmount - 149 - (b.discountAmount || 0)) / 1.18 : 0).toFixed(2)}</span>
+                                  <span>₹{(b.totalAmount ? (b.totalAmount + (b.discountAmount || 0)) / 1.18 : 0).toFixed(2)}</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-secondary)', margin: '3px 0' }}>
                                   <span>GST (18%):</span>
-                                  <span>₹{(b.totalAmount ? ((b.totalAmount - 149 - (b.discountAmount || 0)) / 1.18) * 0.18 : 0).toFixed(2)}</span>
+                                  <span>₹{(b.totalAmount ? ((b.totalAmount + (b.discountAmount || 0)) / 1.18) * 0.18 : 0).toFixed(2)}</span>
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-secondary)', margin: '3px 0' }}>
-                                  <span>Delivery Fee:</span>
-                                  <span>₹149.00</span>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#10b981', margin: '3px 0' }}>
+                                  <span>Delivery:</span>
+                                  <span>FREE 🎉</span>
                                 </div>
                                 {(b.discountAmount || 0) > 0 && (
                                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#10b981', margin: '3px 0' }}>
@@ -8424,7 +8111,7 @@ export default function App() {
               </p>
               <div className="footer-phone">
                 <Smartphone size={14} />
-                <span>081808 07208</span>
+                <span>8180807208</span>
               </div>
             </div>
           </div>
