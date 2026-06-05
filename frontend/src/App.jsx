@@ -3118,7 +3118,7 @@ export default function App() {
           </div>
 
           {/* CUSTOMER REVIEWS / TESTIMONIALS */}
-          {reviews.length > 0 && (
+          {!isUserLoggedIn && reviews.length > 0 && (
             <>
               <div className="section-header" style={{ marginTop: '16px' }}>
                 <h2 className="section-title">What Our <span>Renters Say</span></h2>
