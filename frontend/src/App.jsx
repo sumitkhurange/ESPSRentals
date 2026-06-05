@@ -3117,7 +3117,101 @@ export default function App() {
             </button>
           </div>
 
+          {/* CUSTOMER REVIEWS / TESTIMONIALS */}
+          {reviews.length > 0 && (
+            <>
+              <div className="section-header" style={{ marginTop: '16px' }}>
+                <h2 className="section-title">What Our <span>Renters Say</span></h2>
+                <p className="section-subtitle">Real reviews from verified customers who rented our gaming gear</p>
+              </div>
 
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', 
+                gap: '20px', 
+                marginBottom: '48px' 
+              }}>
+                {[...reviews]
+                  .sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0) || new Date(b.createdAt) - new Date(a.createdAt))
+                  .slice(0, 6)
+                  .map((rev) => (
+                    <div 
+                      key={rev.id} 
+                      className="glass-panel" 
+                      style={{ 
+                        padding: '24px', 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        gap: '12px',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,229,255,0.12)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+                    >
+                      {/* Quote icon */}
+                      <div style={{ 
+                        position: 'absolute', 
+                        top: '12px', 
+                        right: '16px', 
+                        fontSize: '48px', 
+                        color: 'rgba(0,229,255,0.08)', 
+                        fontFamily: 'Georgia, serif', 
+                        lineHeight: 1, 
+                        pointerEvents: 'none' 
+                      }}>
+                        "
+                      </div>
+
+                      {/* Stars */}
+                      <div style={{ display: 'flex', gap: '2px' }}>
+                        {renderStars(rev.rating)}
+                      </div>
+
+                      {/* Comment */}
+                      <p style={{ 
+                        color: 'var(--text-secondary)', 
+                        fontSize: '13.5px', 
+                        lineHeight: '1.55', 
+                        margin: 0,
+                        minHeight: '40px',
+                        fontStyle: 'italic'
+                      }}>
+                        "{rev.comment}"
+                      </p>
+
+                      {/* Reviewer info */}
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        borderTop: '1px solid var(--border)', 
+                        paddingTop: '12px',
+                        marginTop: 'auto'
+                      }}>
+                        <div>
+                          <strong style={{ color: '#fff', fontSize: '13.5px' }}>{rev.customerName}</strong>
+                          {rev.bookingId && (
+                            <span className="status-pill approved" style={{ fontSize: '8.5px', padding: '2px 6px', marginLeft: '6px', display: 'inline-flex', alignItems: 'center' }}>
+                              Verified Renter
+                            </span>
+                          )}
+                          {rev.productName && (
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                              Rented: {rev.productName}
+                            </div>
+                          )}
+                        </div>
+                        <span style={{ fontSize: '10.5px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                          {new Date(rev.createdAt).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </>
+          )}
 
           <div style={{ height: '20px' }} />
         </>
